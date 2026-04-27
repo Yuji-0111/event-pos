@@ -1,0 +1,874 @@
+[event-pos-system.html](https://github.com/user-attachments/files/27112446/event-pos-system.html)
+# event-pos<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>飲食イベント販売システム</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;background:#f2f2f7}
+.app{max-width:480px;margin:0 auto;min-height:100vh;background:#fff;display:flex;flex-direction:column}
+.topbar{background:#1a1a2e;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar h1{font-size:15px;font-weight:500}
+.sync-indicator{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
+.sync-ok{background:rgba(29,158,117,0.8)}
+.sync-err{background:rgba(226,75,74,0.8)}
+.sync-wait{background:rgba(255,255,255,0.2)}
+
+.tab-nav{display:flex;border-bottom:0.5px solid #d1d1d6;background:#fff;position:sticky;top:44px;z-index:90}
+.tab-row-main{display:flex;flex:1}
+.tab-row-sub{display:flex;border-left:0.5px solid #d1d1d6}
+.tab-btn{flex:1;min-width:0;padding:8px 4px;font-size:11px;background:none;border:none;border-bottom:2px solid transparent;color:#8e8e93;cursor:pointer;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;text-align:center}
+.tab-row-sub .tab-btn{min-width:52px;padding:8px 6px}
+.tab-btn.active{color:#1a1a2e;border-bottom-color:#1a1a2e;font-weight:600}
+.tab-badge{position:absolute;top:3px;right:3px;background:#e24b4a;color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center}
+
+.screen{display:none;padding:12px;flex:1}
+.screen.active{display:block}
+
+/* メニューグリッド */
+.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.menu-btn{border:none;cursor:pointer;font-family:inherit;position:relative;display:flex;flex-direction:column;align-items:stretch;overflow:hidden;width:100%;transition:transform 0.08s,opacity 0.1s}
+.menu-btn:active{transform:scale(0.95)}
+.menu-btn.selected{box-shadow:inset 0 0 0 2.5px rgba(0,0,0,0.30)}
+.menu-btn.sold-out{opacity:0.38;cursor:not-allowed}
+.cat-bar{height:4px;width:100%;flex-shrink:0;display:block}
+.btn-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 7px;gap:3px;min-height:56px}
+.menu-name{font-size:12px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:center;width:100%;word-break:break-all}
+.menu-price{font-size:11px;opacity:0.72;white-space:nowrap;text-align:center}
+.stock-label{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.stock-ok{background:rgba(0,0,0,0.07)}
+.stock-warn{background:#FAC775;color:#412402}
+.stock-out{background:#e24b4a;color:#fff}
+.sel-badge{position:absolute;top:3px;right:4px;background:#e24b4a;color:#fff;border-radius:50%;width:17px;height:17px;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;z-index:1}
+.shape-rect{border-radius:8px}
+.shape-pill{border-radius:20px}
+.shape-square{border-radius:2px}
+
+/* 汎用 */
+.card-area{background:#f2f2f7;border-radius:12px;padding:12px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #d1d1d6;font-size:13px}
+.row:last-child{border-bottom:none}
+.total-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #c7c7cc}
+.total-row .lbl{font-size:14px;font-weight:600}
+.total-row .amt{font-size:22px;font-weight:600;color:#1a1a2e}
+
+.btn{padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;flex:1;border:none;transition:opacity 0.1s}
+.btn:active{opacity:0.75}
+.btn-row{display:flex;gap:8px}
+.btn-primary{background:#1a1a2e;color:#fff}
+.btn-secondary{background:#f2f2f7;color:#1a1a2e;border:0.5px solid #c7c7cc}
+.btn-success{background:#1d9e75;color:#fff}
+.btn-danger{background:#e24b4a;color:#fff}
+.btn-sm{padding:6px 10px;font-size:11px;flex:none}
+
+.order-card{background:#f2f2f7;border-radius:10px;padding:12px;border:0.5px solid #d1d1d6;margin-bottom:8px}
+.order-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.order-num{font-size:20px;font-weight:700;color:#1a1a2e}
+.order-time{font-size:11px;color:#8e8e93}
+.order-items{font-size:12px;color:#8e8e93;margin-bottom:8px;line-height:1.5}
+.order-total-txt{font-size:14px;font-weight:600;margin-bottom:8px}
+
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-card{background:#f2f2f7;border-radius:10px;padding:12px}
+.stat-card .s-lbl{font-size:11px;color:#8e8e93;margin-bottom:4px}
+.stat-card .s-val{font-size:22px;font-weight:700}
+
+.section-title{font-size:13px;font-weight:600;color:#8e8e93;margin-bottom:8px;margin-top:16px}
+.section-title:first-child{margin-top:0}
+.clear-btn{background:none;border:none;font-size:11px;color:#e24b4a;cursor:pointer;padding:4px;font-family:inherit}
+.field-lbl{font-size:12px;color:#8e8e93;margin-bottom:4px;margin-top:6px}
+
+.num-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.num-row input{flex:1;padding:10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:18px;font-family:inherit;background:#fff;color:#1a1a2e;text-align:center}
+
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:20px;width:92%;max-width:360px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:600;margin-bottom:14px}
+.modal input,.modal select{width:100%;padding:9px 10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a2e;margin-bottom:10px;-webkit-appearance:none}
+
+.color-swatch-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.color-swatch{width:30px;height:30px;border-radius:6px;cursor:pointer;border:2.5px solid transparent;transition:transform 0.1s}
+.color-swatch.selected{border-color:#1a1a2e;transform:scale(1.15)}
+
+.shape-preview-row{display:flex;gap:8px;margin-bottom:10px}
+.shape-preview{width:60px;height:32px;background:#f2f2f7;border:0.5px solid #c7c7cc;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:#8e8e93}
+.shape-preview.selected{border:2px solid #1a1a2e;color:#1a1a2e;font-weight:600}
+
+.sort-item{display:flex;align-items:center;gap:8px;padding:8px;background:#f2f2f7;border-radius:10px;margin-bottom:6px;border:0.5px solid #d1d1d6}
+.sort-bar-thin{width:4px;height:28px;border-radius:2px;flex-shrink:0}
+.sort-arrows{display:flex;flex-direction:column;gap:2px}
+.sort-arrows button{background:none;border:0.5px solid #c7c7cc;border-radius:3px;width:26px;height:20px;font-size:11px;cursor:pointer;color:#1a1a2e;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.sort-arrows button:disabled{opacity:0.25;cursor:default}
+
+.cat-legend-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.cat-legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#8e8e93}
+.cat-legend-bar{width:16px;height:4px;border-radius:2px}
+
+.empty-state{text-align:center;padding:32px 0;color:#8e8e93;font-size:14px}
+.status-flow{display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:11px;flex-wrap:wrap}
+.status-step{padding:4px 10px;border-radius:12px;background:#f2f2f7;color:#8e8e93;border:0.5px solid #d1d1d6}
+.status-step.active-step{background:#1a1a2e;color:#fff;border-color:#1a1a2e}
+.status-arrow{color:#8e8e93;font-size:10px}
+
+.offline-banner{background:#e24b4a;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:500;display:none}
+.offline-banner.show{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="offline-banner" id="offlineBanner">⚠️ オフライン中 — データは接続回復後に同期されます</div>
+
+<div class="topbar">
+  <h1>飲食イベント販売システム</h1>
+  <span id="syncIndicator" class="sync-indicator sync-wait">接続中…</span>
+</div>
+
+<div class="tab-nav">
+  <div class="tab-row-main">
+    <button class="tab-btn active" onclick="switchTab('order')" id="tb-order">注文</button>
+    <button class="tab-btn" onclick="switchTab('payment')" id="tb-payment">会計待ち<span class="tab-badge" id="payBadge" style="display:none">0</span></button>
+    <button class="tab-btn" onclick="switchTab('waiting')" id="tb-waiting">受け渡し待ち<span class="tab-badge" id="waitBadge" style="display:none">0</span></button>
+  </div>
+  <div class="tab-row-sub">
+    <button class="tab-btn" onclick="switchTab('admin')" id="tb-admin">集計</button>
+    <button class="tab-btn" onclick="switchTab('settings')" id="tb-settings">設定</button>
+  </div>
+</div>
+
+<!-- 注文 -->
+<div id="tab-order" class="screen active">
+  <div class="cat-legend-row" id="catLegend"></div>
+  <div class="menu-grid" id="menuGrid"></div>
+  <div id="cartArea" style="display:none">
+    <div class="section-title">選択中</div>
+    <div class="card-area">
+      <div id="cartItems"></div>
+      <div class="total-row"><span class="lbl">合計</span><span class="amt" id="totalAmount">¥0</span></div>
+    </div>
+    <div class="num-row">
+      <span style="font-size:13px;color:#8e8e93;white-space:nowrap">番号札</span>
+      <input type="number" id="ticketNum" placeholder="任意（省略可）" min="1" max="999">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="clearCart()">クリア</button>
+      <button class="btn btn-primary" onclick="completeOrder()">注文確定 → 会計待ちへ</button>
+    </div>
+  </div>
+  <div id="emptyCart" class="empty-state">メニューをタップして選択</div>
+</div>
+
+<!-- 会計待ち -->
+<div id="tab-payment" class="screen">
+  <div class="status-flow">
+    <span class="status-step">注文</span><span class="status-arrow">›</span>
+    <span class="status-step active-step">会計待ち</span><span class="status-arrow">›</span>
+    <span class="status-step">受け渡し待ち</span><span class="status-arrow">›</span>
+    <span class="status-step">完了</span>
+  </div>
+  <div id="paymentList"><div class="empty-state">会計待ちはありません</div></div>
+</div>
+
+<!-- 受け渡し待ち -->
+<div id="tab-waiting" class="screen">
+  <div class="status-flow">
+    <span class="status-step">注文</span><span class="status-arrow">›</span>
+    <span class="status-step">会計待ち</span><span class="status-arrow">›</span>
+    <span class="status-step active-step">受け渡し待ち</span><span class="status-arrow">›</span>
+    <span class="status-step">完了</span>
+  </div>
+  <div id="waitingList"><div class="empty-state">受け渡し待ちはありません</div></div>
+</div>
+
+<!-- 集計（管理者のみ） -->
+<div id="tab-admin" class="screen">
+  <div id="adminLock">
+    <div style="text-align:center;padding:40px 20px">
+      <div style="font-size:36px;margin-bottom:16px">🔒</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">管理者認証</div>
+      <div style="font-size:13px;color:#8e8e93;margin-bottom:20px">パスワードを入力してください</div>
+      <input type="password" id="pwInput" placeholder="パスワード" style="width:100%;padding:10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:16px;font-family:inherit;background:#fff;color:#1a1a2e;margin-bottom:12px">
+      <button class="btn btn-primary" style="width:100%" onclick="checkPassword()">解除</button>
+      <div id="pwError" style="color:#e24b4a;font-size:13px;margin-top:8px;display:none">パスワードが違います</div>
+    </div>
+  </div>
+  <div id="adminContent" style="display:none">
+    <div class="btn-row" style="margin-bottom:12px">
+      <button class="btn btn-secondary btn-sm" onclick="lockAdmin()">ロック</button>
+      <button class="btn btn-danger btn-sm" onclick="resetStats()">集計リセット</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="s-lbl">総売上</div><div class="s-val" id="statTotal">¥0</div></div>
+      <div class="stat-card"><div class="s-lbl">会計件数</div><div class="s-val" id="statCount">0件</div></div>
+    </div>
+    <div class="section-title">メニュー別集計</div>
+    <div class="card-area" id="menuStats"></div>
+    <div class="section-title">在庫状況</div>
+    <div class="card-area" id="stockStatus"></div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div id="tab-settings" class="screen">
+  <div class="section-title">メニュー管理（全端末共通）</div>
+  <div class="card-area" id="menuList"></div>
+  <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="showAddMenu(null)">＋ メニューを追加</button>
+  <div class="section-title">表示順・非表示（この端末のみ）</div>
+  <div id="sortSettings"></div>
+  <div class="section-title">ボタン形状（この端末のみ）</div>
+  <div class="card-area">
+    <div class="shape-preview-row" id="shapeSelector"></div>
+
+    <div class="field-lbl" style="margin-top:12px">端末名</div>
+    <input type="text" id="terminalName" placeholder="端末A" style="width:100%;padding:8px 10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:14px;font-family:inherit;background:#fff;margin-bottom:8px">
+    <button class="btn btn-primary" style="width:100%" onclick="saveTerminalName()">端末名を保存</button>
+  </div>
+</div>
+</div>
+
+<!-- 会計モーダル -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal">
+    <h3>会計</h3>
+    <div id="paymentDetail" style="margin-bottom:14px"></div>
+    <div style="background:#f2f2f7;border-radius:10px;padding:14px;margin-bottom:16px;text-align:center">
+      <div style="font-size:13px;color:#8e8e93;margin-bottom:4px">お支払い金額</div>
+      <div style="font-size:30px;font-weight:700" id="paymentTotal">¥0</div>
+    </div>
+    <div style="font-size:13px;color:#8e8e93;margin-bottom:16px">お金を受領後、完了ボタンを押してください</div>
+    <div class="btn-row">
+      <button class="btn btn-danger" onclick="cancelOrder()">キャンセル</button>
+      <button class="btn btn-success" onclick="completePayment()">受領完了 → 受け渡しへ</button>
+    </div>
+  </div>
+</div>
+
+<!-- メニュー追加・編集モーダル -->
+<div class="modal-overlay" id="addMenuModal">
+  <div class="modal">
+    <h3 id="addMenuTitle">メニューを追加</h3>
+    <div class="field-lbl">メニュー名</div>
+    <input type="text" id="newMenuName" placeholder="例：クラフトビール">
+    <div class="field-lbl">価格（円）</div>
+    <input type="number" id="newMenuPrice" placeholder="例：700" min="0">
+    <div class="field-lbl">カテゴリ</div>
+    <select id="newMenuCat">
+      <option value="drink">ドリンク</option>
+      <option value="food">フード</option>
+      <option value="other">その他</option>
+    </select>
+    <div class="field-lbl">在庫数（空欄で∞）</div>
+    <input type="number" id="newMenuStock" placeholder="空欄 = 在庫管理なし" min="0">
+    <div class="field-lbl">ボタンカラー</div>
+    <div class="color-swatch-row" id="colorSwatches"></div>
+    <div class="field-lbl">プレビュー</div>
+    <div style="display:flex;justify-content:center;margin-bottom:14px">
+      <div id="btnPreview" class="menu-btn shape-rect" style="width:96px;pointer-events:none">
+        <div class="cat-bar" id="previewBar"></div>
+        <div class="btn-body">
+          <span class="menu-name" id="previewName">メニュー名</span>
+          <span class="menu-price" id="previewPrice">¥0</span>
+          <span class="stock-label stock-ok" id="previewStock" style="display:none"></span>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="editMenuId">
+    <input type="hidden" id="selectedColor" value="0">
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('addMenuModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveMenu()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, update, remove, off }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ═══════════════════════════════════════════
+//  Firebase 設定
+// ═══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyCV0NLe1Xxt4Xe1_Cnvbf581H6pXy41dqE",
+  authDomain: "event-pos-system-fe3c7.firebaseapp.com",
+  databaseURL: "https://event-pos-system-fe3c7-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "event-pos-system-fe3c7",
+  storageBucket: "event-pos-system-fe3c7.firebasestorage.app",
+  messagingSenderId: "909283420085",
+  appId: "1:909283420085:web:ac7ae9664fbd19e33fdbfc"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+// ═══════════════════════════════════════════
+//  定数・端末ローカル設定
+// ═══════════════════════════════════════════
+const COLORS = [
+  {bg:'#CECBF6',text:'#26215C',label:'パープル'},
+  {bg:'#9FE1CB',text:'#04342C',label:'ティール'},
+  {bg:'#B5D4F4',text:'#042C53',label:'ブルー'},
+  {bg:'#F5C4B3',text:'#4A1B0C',label:'コーラル'},
+  {bg:'#FAC775',text:'#412402',label:'アンバー'},
+  {bg:'#C0DD97',text:'#173404',label:'グリーン'},
+  {bg:'#D3D1C7',text:'#2C2C2A',label:'グレー'},
+  {bg:'#F4C0D1',text:'#4B1528',label:'ピンク'},
+];
+const CAT_BAR  = {drink:'#378ADD', food:'#D85A30', other:'#888780'};
+const CAT_LBL  = {drink:'ドリンク', food:'フード', other:'その他'};
+const TAB_IDS  = ['order','payment','waiting','admin','settings'];
+
+// 端末ローカル（localStorage）
+let localOrder   = JSON.parse(localStorage.getItem('localOrder')   || 'null');
+let localHidden  = JSON.parse(localStorage.getItem('localHidden')  || '[]');
+let currentShape = localStorage.getItem('btnShape') || 'rect';
+const adminPw    = '0523';
+let terminalName = localStorage.getItem('terminalName') || '端末A';
+
+// アプリ状態（Firebase同期）
+let menus        = {};   // {id: {name,price,cat,colorIdx,stock}}
+let stockUsed    = {};   // {menuId: 使用数}  ← Firebase同期
+let payOrders    = {};   // {orderId: order}  ← Firebase同期
+let waitOrders   = {};   // {orderId: order}  ← Firebase同期
+let stats        = {total:0, count:0, byMenu:{}};  // Firebase同期
+
+let cart         = {};
+let adminUnlocked = false;
+let currentPayId  = null;
+
+// ─ 接続状態表示 ─
+const connRef = ref(db, '.info/connected');
+onValue(connRef, snap => {
+  const ok = snap.val();
+  const el = document.getElementById('syncIndicator');
+  const bn = document.getElementById('offlineBanner');
+  if (ok) {
+    el.textContent = '● 同期中';
+    el.className = 'sync-indicator sync-ok';
+    bn.classList.remove('show');
+  } else {
+    el.textContent = '● オフライン';
+    el.className = 'sync-indicator sync-err';
+    bn.classList.add('show');
+  }
+});
+
+// ═══════════════════════════════════════════
+//  Firebase リアルタイム購読
+// ═══════════════════════════════════════════
+onValue(ref(db,'menus'), snap => {
+  menus = snap.val() || {};
+  syncLocalOrder();
+  renderMenuGrid();
+  if (document.getElementById('tab-settings').classList.contains('active')) renderSettings();
+});
+onValue(ref(db,'stockUsed'), snap => {
+  stockUsed = snap.val() || {};
+  renderMenuGrid();
+  if (adminUnlocked) renderAdmin();
+});
+onValue(ref(db,'payOrders'), snap => {
+  payOrders = snap.val() || {};
+  updateBadges();
+  if (document.getElementById('tab-payment').classList.contains('active')) renderPaymentList();
+});
+onValue(ref(db,'waitOrders'), snap => {
+  waitOrders = snap.val() || {};
+  updateBadges();
+  if (document.getElementById('tab-waiting').classList.contains('active')) renderWaitingList();
+});
+onValue(ref(db,'stats'), snap => {
+  stats = snap.val() || {total:0, count:0, byMenu:{}};
+  if (adminUnlocked) renderAdmin();
+});
+
+// ═══════════════════════════════════════════
+//  ローカル設定ヘルパー
+// ═══════════════════════════════════════════
+function saveLocal() {
+  localStorage.setItem('localOrder',  JSON.stringify(localOrder));
+  localStorage.setItem('localHidden', JSON.stringify(localHidden));
+  localStorage.setItem('btnShape',    currentShape);
+}
+function syncLocalOrder() {
+  const ids = Object.keys(menus);
+  if (!localOrder) localOrder = ids;
+  localOrder = localOrder.filter(id => ids.includes(id));
+  ids.forEach(id => { if (!localOrder.includes(id)) localOrder.push(id); });
+}
+function orderedMenus() {
+  syncLocalOrder();
+  return localOrder.map(id => ({id, ...menus[id]})).filter(m => m.name);
+}
+function visibleMenus() {
+  return orderedMenus().filter(m => !localHidden.includes(m.id));
+}
+
+// ═══════════════════════════════════════════
+//  在庫ヘルパー
+// ═══════════════════════════════════════════
+function getStock(id) {
+  const m = menus[id];
+  if (!m || m.stock == null) return null;
+  return Math.max(0, m.stock - (stockUsed[id] || 0));
+}
+function stockClass(id) {
+  const rem = getStock(id);
+  if (rem === null) return null;
+  if (rem === 0) return 'out';
+  const m = menus[id];
+  if (rem <= Math.ceil(m.stock * 0.1)) return 'warn';
+  return 'ok';
+}
+
+// ═══════════════════════════════════════════
+//  タブ切替
+// ═══════════════════════════════════════════
+function switchTab(t) {
+  TAB_IDS.forEach(id => {
+    document.getElementById('tb-' + id).classList.toggle('active', id === t);
+    document.getElementById('tab-' + id).classList.toggle('active', id === t);
+  });
+  if (t === 'settings') renderSettings();
+  if (t === 'payment')  renderPaymentList();
+  if (t === 'waiting')  renderWaitingList();
+  if (t === 'admin')    renderAdmin();
+}
+window.switchTab = switchTab;
+
+// ═══════════════════════════════════════════
+//  注文タブ
+// ═══════════════════════════════════════════
+function renderMenuGrid() {
+  const g = document.getElementById('menuGrid');
+  g.innerHTML = '';
+  const vis = visibleMenus();
+  vis.forEach(m => {
+    const cnt = cart[m.id] || 0;
+    const c   = COLORS[m.colorIdx ?? 6];
+    const bar = CAT_BAR[m.cat] || '#888';
+    const rem = getStock(m.id);
+    const sc  = stockClass(m.id);
+    const out = sc === 'out';
+    let sHtml = '';
+    if (rem !== null) {
+      if (sc === 'out')  sHtml = `<span class="stock-label stock-out">売り切れ</span>`;
+      else if (sc === 'warn') sHtml = `<span class="stock-label stock-warn">残り${rem}個</span>`;
+      else sHtml = `<span class="stock-label stock-ok">残${rem}</span>`;
+    }
+    const btn = document.createElement('button');
+    btn.className = `menu-btn shape-${currentShape}${cnt ? ' selected' : ''}${out ? ' sold-out' : ''}`;
+    btn.style.cssText = `background:${c.bg};color:${c.text}`;
+    btn.disabled = out;
+    btn.innerHTML =
+      `<span class="cat-bar" style="background:${bar}"></span>` +
+      `<span class="btn-body">` +
+        `<span class="menu-name">${m.name}</span>` +
+        `<span class="menu-price">¥${m.price.toLocaleString()}</span>` +
+        sHtml +
+      `</span>` +
+      (cnt ? `<span class="sel-badge">${cnt}</span>` : '');
+    btn.onclick = () => addToCart(m.id);
+    g.appendChild(btn);
+  });
+  // 凡例
+  const cats = [...new Set(vis.map(m => m.cat))];
+  document.getElementById('catLegend').innerHTML = cats.map(c =>
+    `<div class="cat-legend-item"><div class="cat-legend-bar" style="background:${CAT_BAR[c]||'#888'}"></div>${CAT_LBL[c]||c}</div>`
+  ).join('');
+}
+
+function addToCart(id) {
+  const rem = getStock(id);
+  if (rem !== null && (cart[id] || 0) >= rem) { alert('在庫数を超えて選択できません'); return; }
+  cart[id] = (cart[id] || 0) + 1;
+  renderMenuGrid(); renderCart();
+}
+function removeFromCart(id) {
+  if (cart[id] > 1) cart[id]--; else delete cart[id];
+  renderMenuGrid(); renderCart();
+}
+window.removeFromCart = removeFromCart;
+
+function clearCart() { cart = {}; renderMenuGrid(); renderCart(); }
+window.clearCart = clearCart;
+
+function renderCart() {
+  const keys = Object.keys(cart).filter(k => cart[k] > 0);
+  document.getElementById('cartArea').style.display  = keys.length ? 'block' : 'none';
+  document.getElementById('emptyCart').style.display = keys.length ? 'none'  : 'block';
+  if (!keys.length) return;
+  const ci = document.getElementById('cartItems'); ci.innerHTML = '';
+  let total = 0;
+  keys.forEach(k => {
+    const m = menus[k]; if (!m) return;
+    const sub = m.price * cart[k]; total += sub;
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = `<span>${m.name} × ${cart[k]}</span><div style="display:flex;align-items:center;gap:8px"><span>¥${sub.toLocaleString()}</span><button class="clear-btn" onclick="removeFromCart('${k}')">✕</button></div>`;
+    ci.appendChild(r);
+  });
+  document.getElementById('totalAmount').textContent = '¥' + total.toLocaleString();
+}
+
+async function completeOrder() {
+  const keys = Object.keys(cart).filter(k => cart[k] > 0);
+  if (!keys.length) return;
+  const ticketRaw = document.getElementById('ticketNum').value;
+  const ticket = ticketRaw ? parseInt(ticketRaw) : null;
+  const allOrders = {...payOrders, ...waitOrders};
+  if (ticket !== null && Object.values(allOrders).find(o => o.ticket === ticket)) {
+    alert(`番号札 ${ticket} はすでに使用中です`); return;
+  }
+  let total = 0;
+  const items = [];
+  const stockUpdate = {};
+  keys.forEach(k => {
+    const m = menus[k]; if (!m) return;
+    const sub = m.price * cart[k]; total += sub;
+    items.push({id: k, name: m.name, qty: cart[k], price: sub});
+    stockUpdate[k] = (stockUsed[k] || 0) + cart[k];
+  });
+  const order = {
+    ticket, items, total,
+    time: new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}),
+    createdAt: Date.now()
+  };
+  const newRef = push(ref(db, 'payOrders'));
+  order.id = newRef.key;
+  await set(newRef, order);
+  await update(ref(db, 'stockUsed'), stockUpdate);
+  cart = {};
+  document.getElementById('ticketNum').value = '';
+  renderMenuGrid(); renderCart(); switchTab('payment');
+}
+window.completeOrder = completeOrder;
+
+// ═══════════════════════════════════════════
+//  会計待ちタブ
+// ═══════════════════════════════════════════
+function renderPaymentList() {
+  const el = document.getElementById('paymentList');
+  const orders = Object.values(payOrders).sort((a,b) => a.createdAt - b.createdAt);
+  if (!orders.length) { el.innerHTML = '<div class="empty-state">会計待ちはありません</div>'; return; }
+  el.innerHTML = '';
+  orders.forEach(o => {
+    const label = o.ticket != null ? `No.${o.ticket}` : '#' + String(o.id).slice(-4);
+    const card = document.createElement('div'); card.className = 'order-card';
+    card.innerHTML =
+      `<div class="order-card-header"><span class="order-num">${label}</span><span class="order-time">${o.time}</span></div>` +
+      `<div class="order-items">${o.items.map(i=>`${i.name}×${i.qty}`).join('、')}</div>` +
+      `<div class="order-total-txt">¥${o.total.toLocaleString()}</div>` +
+      `<div class="btn-row"><button class="btn btn-success" onclick="openPaymentModal('${o.id}')">会計する</button></div>`;
+    el.appendChild(card);
+  });
+}
+
+function openPaymentModal(id) {
+  const o = payOrders[id]; if (!o) return;
+  currentPayId = id;
+  const label = o.ticket != null ? `No.${o.ticket}` : '#' + String(o.id).slice(-4);
+  let detail = `<div style="font-size:13px;color:#8e8e93;margin-bottom:8px">${label}</div>`;
+  o.items.forEach(i => { detail += `<div class="row"><span>${i.name} × ${i.qty}</span><span>¥${i.price.toLocaleString()}</span></div>`; });
+  document.getElementById('paymentDetail').innerHTML = detail;
+  document.getElementById('paymentTotal').textContent = '¥' + o.total.toLocaleString();
+  document.getElementById('paymentModal').classList.add('open');
+}
+window.openPaymentModal = openPaymentModal;
+
+async function completePayment() {
+  const o = payOrders[currentPayId]; if (!o) return;
+  // 集計更新
+  const newStats = JSON.parse(JSON.stringify(stats));
+  newStats.total  = (newStats.total || 0) + o.total;
+  newStats.count  = (newStats.count || 0) + 1;
+  if (!newStats.byMenu) newStats.byMenu = {};
+  o.items.forEach(i => {
+    if (!newStats.byMenu[i.id]) newStats.byMenu[i.id] = {name: i.name, qty: 0, total: 0};
+    newStats.byMenu[i.id].qty   += i.qty;
+    newStats.byMenu[i.id].total += i.price;
+  });
+  await set(ref(db, 'stats'), newStats);
+  // payOrders → waitOrders へ移動
+  await set(ref(db, `waitOrders/${o.id}`), o);
+  await remove(ref(db, `payOrders/${o.id}`));
+  closeModal('paymentModal');
+}
+window.completePayment = completePayment;
+
+async function cancelOrder() {
+  const o = payOrders[currentPayId]; if (!o) return;
+  if (!confirm('この注文をキャンセルしますか？在庫数は戻ります。')) return;
+  const stockUpdate = {};
+  o.items.forEach(i => { stockUpdate[i.id] = Math.max(0, (stockUsed[i.id] || 0) - i.qty); });
+  await update(ref(db, 'stockUsed'), stockUpdate);
+  await remove(ref(db, `payOrders/${o.id}`));
+  closeModal('paymentModal');
+}
+window.cancelOrder = cancelOrder;
+
+// ═══════════════════════════════════════════
+//  受け渡し待ちタブ
+// ═══════════════════════════════════════════
+function renderWaitingList() {
+  const el = document.getElementById('waitingList');
+  const orders = Object.values(waitOrders).sort((a,b) => a.createdAt - b.createdAt);
+  if (!orders.length) { el.innerHTML = '<div class="empty-state">受け渡し待ちはありません</div>'; return; }
+  el.innerHTML = '';
+  orders.forEach(o => {
+    const label = o.ticket != null ? `No.${o.ticket}` : '#' + String(o.id).slice(-4);
+    const card = document.createElement('div'); card.className = 'order-card';
+    card.innerHTML =
+      `<div class="order-card-header"><span class="order-num">${label}</span><span class="order-time">${o.time}</span></div>` +
+      `<div class="order-items">${o.items.map(i=>`${i.name}×${i.qty}`).join('、')}</div>` +
+      `<div class="order-total-txt">¥${o.total.toLocaleString()}</div>` +
+      `<div class="btn-row"><button class="btn btn-success" onclick="completeDelivery('${o.id}')">渡した → 完了</button></div>`;
+    el.appendChild(card);
+  });
+}
+async function completeDelivery(id) {
+  await remove(ref(db, `waitOrders/${id}`));
+}
+window.completeDelivery = completeDelivery;
+
+// ═══════════════════════════════════════════
+//  バッジ更新
+// ═══════════════════════════════════════════
+function updateBadges() {
+  const pc = Object.keys(payOrders).length;
+  const wc = Object.keys(waitOrders).length;
+  const pb = document.getElementById('payBadge');
+  const wb = document.getElementById('waitBadge');
+  pb.style.display = pc ? 'flex' : 'none'; pb.textContent = pc;
+  wb.style.display = wc ? 'flex' : 'none'; wb.textContent = wc;
+}
+
+// ═══════════════════════════════════════════
+//  集計タブ
+// ═══════════════════════════════════════════
+function renderAdmin() {
+  if (!adminUnlocked) {
+    document.getElementById('adminLock').style.display    = 'block';
+    document.getElementById('adminContent').style.display = 'none';
+    return;
+  }
+  document.getElementById('adminLock').style.display    = 'none';
+  document.getElementById('adminContent').style.display = 'block';
+  document.getElementById('statTotal').textContent = '¥' + (stats.total || 0).toLocaleString();
+  document.getElementById('statCount').textContent = (stats.count || 0) + '件';
+  const ms = document.getElementById('menuStats'); ms.innerHTML = '';
+  const bm = stats.byMenu || {};
+  if (!Object.keys(bm).length) {
+    ms.innerHTML = '<div style="color:#8e8e93;font-size:13px">まだ売上がありません</div>';
+  } else {
+    Object.values(bm).forEach(d => {
+      const r = document.createElement('div'); r.className = 'row';
+      r.innerHTML = `<span>${d.name}</span><span>${d.qty}個 / ¥${d.total.toLocaleString()}</span>`;
+      ms.appendChild(r);
+    });
+  }
+  const ss = document.getElementById('stockStatus'); ss.innerHTML = '';
+  Object.entries(menus).forEach(([id, m]) => {
+    const rem = getStock(id); const sc = stockClass(id);
+    const rt = rem === null ? '∞'
+      : (sc === 'out'  ? '<span style="color:#e24b4a;font-weight:600">売り切れ</span>'
+      : (sc === 'warn' ? `<span style="color:#BA7517;font-weight:600">残り${rem}</span>`
+      : `残り${rem}`));
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = `<span>${m.name}</span><span>${rt}</span>`;
+    ss.appendChild(r);
+  });
+}
+
+function checkPassword() {
+  if (document.getElementById('pwInput').value === adminPw) {
+    adminUnlocked = true;
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwError').style.display = 'none';
+    renderAdmin();
+  } else {
+    document.getElementById('pwError').style.display = 'block';
+  }
+}
+window.checkPassword = checkPassword;
+
+function lockAdmin() { adminUnlocked = false; renderAdmin(); }
+window.lockAdmin = lockAdmin;
+
+async function resetStats() {
+  if (!confirm('集計データをリセットしますか？')) return;
+  await set(ref(db, 'stats'), {total:0, count:0, byMenu:{}});
+}
+window.resetStats = resetStats;
+
+
+
+// ═══════════════════════════════════════════
+//  設定タブ
+// ═══════════════════════════════════════════
+function renderSettings() {
+  // メニュー管理
+  const ml = document.getElementById('menuList'); ml.innerHTML = '';
+  Object.entries(menus).forEach(([id, m]) => {
+    const c = COLORS[m.colorIdx ?? 6];
+    const st = m.stock != null ? `在庫:${m.stock}` : '在庫:∞';
+    const r = document.createElement('div');
+    r.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #d1d1d6">
+      <div style="width:10px;height:10px;border-radius:2px;background:${c.bg};border:0.5px solid rgba(0,0,0,0.1);flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name}</div>
+        <div style="font-size:11px;color:#8e8e93">${CAT_LBL[m.cat]||''} · ¥${m.price.toLocaleString()} · ${st}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        <button class="btn btn-secondary btn-sm" onclick="showAddMenu('${id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMenu('${id}')">削除</button>
+      </div>
+    </div>`;
+    ml.appendChild(r);
+  });
+
+  // 並び替え・非表示（ローカル）
+  const ss = document.getElementById('sortSettings'); ss.innerHTML = '';
+  orderedMenus().forEach((m, i, arr) => {
+    const ih = localHidden.includes(m.id);
+    const item = document.createElement('div'); item.className = 'sort-item'; item.style.opacity = ih ? '0.45' : '1';
+    item.innerHTML =
+      `<div class="sort-bar-thin" style="background:${CAT_BAR[m.cat]||'#888'}"></div>` +
+      `<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${m.name}</span>` +
+      `<button class="btn ${ih?'btn-primary':'btn-secondary'} btn-sm" style="font-size:10px;padding:4px 7px;flex-shrink:0" onclick="toggleHidden('${m.id}')">${ih?'表示':'非表示'}</button>` +
+      `<div class="sort-arrows">
+        <button onclick="moveUp(${i})" ${i===0?'disabled':''}>▲</button>
+        <button onclick="moveDown(${i})" ${i===arr.length-1?'disabled':''}>▼</button>
+      </div>`;
+    ss.appendChild(item);
+  });
+
+  // 形状
+  const se = document.getElementById('shapeSelector'); se.innerHTML = '';
+  [{id:'rect',label:'角丸'},{id:'pill',label:'ピル'},{id:'square',label:'スクエア'}].forEach(sh => {
+    const d = document.createElement('div');
+    d.className = `shape-preview shape-${sh.id}${currentShape === sh.id ? ' selected' : ''}`;
+    d.textContent = sh.label;
+    d.onclick = () => { currentShape = sh.id; saveLocal(); renderMenuGrid(); renderSettings(); };
+    se.appendChild(d);
+  });
+
+  document.getElementById('terminalName').value = terminalName;
+}
+
+function moveUp(i) {
+  if (i <= 0) return;
+  [localOrder[i-1], localOrder[i]] = [localOrder[i], localOrder[i-1]];
+  saveLocal(); renderMenuGrid(); renderSettings();
+}
+function moveDown(i) {
+  if (i >= localOrder.length - 1) return;
+  [localOrder[i], localOrder[i+1]] = [localOrder[i+1], localOrder[i]];
+  saveLocal(); renderMenuGrid(); renderSettings();
+}
+function toggleHidden(id) {
+  const idx = localHidden.indexOf(id);
+  if (idx > -1) localHidden.splice(idx, 1); else localHidden.push(id);
+  saveLocal(); renderSettings(); renderMenuGrid();
+}
+window.moveUp = moveUp; window.moveDown = moveDown; window.toggleHidden = toggleHidden;
+
+function saveTerminalName() {
+  terminalName = document.getElementById('terminalName').value.trim() || '端末A';
+  localStorage.setItem('terminalName', terminalName);
+  alert('保存しました');
+}
+window.saveTerminalName = saveTerminalName;
+
+// ─ メニュー追加・編集 ─
+function showAddMenu(id) {
+  const m = id ? menus[id] : null;
+  document.getElementById('addMenuTitle').textContent = m ? 'メニューを編集' : 'メニューを追加';
+  document.getElementById('newMenuName').value  = m ? m.name  : '';
+  document.getElementById('newMenuPrice').value = m ? m.price : '';
+  document.getElementById('newMenuCat').value   = m ? (m.cat || 'drink') : 'drink';
+  document.getElementById('newMenuStock').value = m && m.stock != null ? m.stock : '';
+  document.getElementById('editMenuId').value   = id || '';
+  const si = m && m.colorIdx != null ? m.colorIdx : 0;
+  document.getElementById('selectedColor').value = si;
+  renderColorSwatches(si); updatePreview();
+  document.getElementById('addMenuModal').classList.add('open');
+}
+window.showAddMenu = showAddMenu;
+
+function renderColorSwatches(si) {
+  const cs = document.getElementById('colorSwatches'); cs.innerHTML = '';
+  COLORS.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.className = 'color-swatch' + (i === si ? ' selected' : '');
+    d.style.background = c.bg; d.title = c.label;
+    d.onclick = () => { document.getElementById('selectedColor').value = i; renderColorSwatches(i); updatePreview(); };
+    cs.appendChild(d);
+  });
+}
+function updatePreview() {
+  const name     = document.getElementById('newMenuName').value  || 'メニュー名';
+  const price    = parseInt(document.getElementById('newMenuPrice').value) || 0;
+  const cat      = document.getElementById('newMenuCat').value;
+  const sv       = document.getElementById('newMenuStock').value;
+  const ci       = parseInt(document.getElementById('selectedColor').value) || 0;
+  const c = COLORS[ci];
+  const p = document.getElementById('btnPreview');
+  p.style.background = c.bg; p.style.color = c.text;
+  p.className = `menu-btn shape-${currentShape}`;
+  document.getElementById('previewBar').style.background   = CAT_BAR[cat] || '#888';
+  document.getElementById('previewName').textContent        = name;
+  document.getElementById('previewPrice').textContent       = '¥' + price.toLocaleString();
+  const ps = document.getElementById('previewStock');
+  if (sv !== '' && parseInt(sv) >= 0) { ps.style.display = 'inline-block'; ps.textContent = '残' + sv; ps.className = 'stock-label stock-ok'; }
+  else ps.style.display = 'none';
+}
+['newMenuName','newMenuPrice','newMenuCat','newMenuStock'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updatePreview);
+});
+
+async function saveMenu() {
+  const name  = document.getElementById('newMenuName').value.trim();
+  const price = parseInt(document.getElementById('newMenuPrice').value);
+  const cat   = document.getElementById('newMenuCat').value;
+  const sr    = document.getElementById('newMenuStock').value;
+  const stock = sr === '' ? null : parseInt(sr);
+  const ci    = parseInt(document.getElementById('selectedColor').value) || 0;
+  const eid   = document.getElementById('editMenuId').value;
+  if (!name || isNaN(price) || price < 0) { alert('名前と価格を正しく入力してください'); return; }
+  const data = {name, price, cat, colorIdx: ci, stock: stock ?? null};
+  if (eid) {
+    await update(ref(db, `menus/${eid}`), data);
+  } else {
+    const newRef = push(ref(db, 'menus'));
+    await set(newRef, data);
+  }
+  closeModal('addMenuModal');
+}
+window.saveMenu = saveMenu;
+
+async function deleteMenu(id) {
+  if (!confirm('このメニューを削除しますか？')) return;
+  await remove(ref(db, `menus/${id}`));
+  delete cart[id];
+  localOrder = localOrder.filter(x => x !== id);
+  localHidden = localHidden.filter(x => x !== id);
+  saveLocal(); renderCart();
+}
+window.deleteMenu = deleteMenu;
+
+// ─ モーダル ─
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+window.closeModal = closeModal;
+
+// ═══════════════════════════════════════════
+//  初期化
+// ═══════════════════════════════════════════
+syncLocalOrder();
+renderMenuGrid();
+</script>
+</body>
+</html>
