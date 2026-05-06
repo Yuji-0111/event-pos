@@ -6,27 +6,44 @@
 <title>飲食イベント販売システム</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;background:#f2f2f7}
-.app{max-width:480px;margin:0 auto;min-height:100vh;background:#fff;display:flex;flex-direction:column}
-.topbar{background:#1a1a2e;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.topbar h1{font-size:15px;font-weight:500}
-.sync-indicator{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
-.sync-ok{background:rgba(29,158,117,0.8)}
-.sync-err{background:rgba(226,75,74,0.8)}
-.sync-wait{background:rgba(255,255,255,0.2)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;background:#f2f2f7;-webkit-tap-highlight-color:transparent}
 
-.tab-nav{display:flex;border-bottom:0.5px solid #d1d1d6;background:#fff;position:sticky;top:44px;z-index:90}
+/* ── レイアウト ── */
+.app{max-width:480px;margin:0 auto;min-height:100vh;background:#fff;display:flex;flex-direction:column}
+.topbar{background:#1a1a2e;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:8px}
+.topbar-left{display:flex;flex-direction:column;gap:2px}
+.topbar h1{font-size:14px;font-weight:600;line-height:1.2}
+.shop-badge{font-size:11px;opacity:0.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.sync-indicator{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;white-space:nowrap;flex-shrink:0}
+.sync-ok{background:rgba(29,158,117,0.85)}
+.sync-err{background:rgba(226,75,74,0.85)}
+.sync-wait{background:rgba(255,255,255,0.2)}
+.offline-banner{background:#e24b4a;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:500;display:none}
+.offline-banner.show{display:block}
+
+/* ── タブ ── */
+.tab-nav{display:flex;border-bottom:0.5px solid #d1d1d6;background:#fff;position:sticky;top:52px;z-index:90}
 .tab-row-main{display:flex;flex:1}
 .tab-row-sub{display:flex;border-left:0.5px solid #d1d1d6}
-.tab-btn{flex:1;min-width:0;padding:8px 4px;font-size:11px;background:none;border:none;border-bottom:2px solid transparent;color:#8e8e93;cursor:pointer;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;text-align:center}
-.tab-row-sub .tab-btn{min-width:52px;padding:8px 6px}
+.tab-btn{flex:1;min-width:0;padding:8px 3px;font-size:10px;background:none;border:none;border-bottom:2px solid transparent;color:#8e8e93;cursor:pointer;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;text-align:center;line-height:1.3}
+.tab-row-sub .tab-btn{min-width:48px;padding:8px 5px}
 .tab-btn.active{color:#1a1a2e;border-bottom-color:#1a1a2e;font-weight:600}
-.tab-badge{position:absolute;top:3px;right:3px;background:#e24b4a;color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.tab-badge{position:absolute;top:3px;right:2px;background:#e24b4a;color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center}
 
+/* ── 画面 ── */
 .screen{display:none;padding:12px;flex:1}
 .screen.active{display:block}
 
-/* メニューグリッド */
+/* ── 店舗選択画面 ── */
+.shop-select-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#fff}
+.shop-select-screen h2{font-size:18px;font-weight:700;margin-bottom:6px;color:#1a1a2e}
+.shop-select-screen p{font-size:13px;color:#8e8e93;margin-bottom:24px;text-align:center}
+.shop-list{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px}
+.shop-select-btn{width:100%;padding:16px;background:#f2f2f7;border:0.5px solid #d1d1d6;border-radius:12px;font-size:15px;font-weight:600;color:#1a1a2e;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;gap:10px}
+.shop-select-btn:active{background:#e5e5ea}
+.shop-icon{font-size:20px}
+
+/* ── メニューグリッド ── */
 .menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .menu-btn{border:none;cursor:pointer;font-family:inherit;position:relative;display:flex;flex-direction:column;align-items:stretch;overflow:hidden;width:100%;transition:transform 0.08s,opacity 0.1s}
 .menu-btn:active{transform:scale(0.95)}
@@ -45,14 +62,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
 .shape-pill{border-radius:20px}
 .shape-square{border-radius:2px}
 
-/* 汎用 */
+/* ── 汎用パーツ ── */
 .card-area{background:#f2f2f7;border-radius:12px;padding:12px;margin-bottom:12px}
 .row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #d1d1d6;font-size:13px}
 .row:last-child{border-bottom:none}
 .total-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #c7c7cc}
 .total-row .lbl{font-size:14px;font-weight:600}
-.total-row .amt{font-size:22px;font-weight:600;color:#1a1a2e}
-
+.total-row .amt{font-size:22px;font-weight:700;color:#1a1a2e}
 .btn{padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;flex:1;border:none;transition:opacity 0.1s}
 .btn:active{opacity:0.75}
 .btn-row{display:flex;gap:8px}
@@ -60,7 +76,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
 .btn-secondary{background:#f2f2f7;color:#1a1a2e;border:0.5px solid #c7c7cc}
 .btn-success{background:#1d9e75;color:#fff}
 .btn-danger{background:#e24b4a;color:#fff}
+.btn-paypay{background:#e21a32;color:#fff}
+.btn-cash{background:#2c7be5;color:#fff}
 .btn-sm{padding:6px 10px;font-size:11px;flex:none}
+.btn-lg{padding:16px;font-size:15px}
 
 .order-card{background:#f2f2f7;border-radius:10px;padding:12px;border:0.5px solid #d1d1d6;margin-bottom:8px}
 .order-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
@@ -68,34 +87,56 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
 .order-time{font-size:11px;color:#8e8e93}
 .order-items{font-size:12px;color:#8e8e93;margin-bottom:8px;line-height:1.5}
 .order-total-txt{font-size:14px;font-weight:600;margin-bottom:8px}
+.pay-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px}
+.pay-cash{background:#dbeafe;color:#1e40af}
+.pay-paypay{background:#fee2e2;color:#991b1b}
 
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stats-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
 .stat-card{background:#f2f2f7;border-radius:10px;padding:12px}
-.stat-card .s-lbl{font-size:11px;color:#8e8e93;margin-bottom:4px}
-.stat-card .s-val{font-size:22px;font-weight:700}
+.stat-card .s-lbl{font-size:10px;color:#8e8e93;margin-bottom:4px}
+.stat-card .s-val{font-size:18px;font-weight:700}
+.stat-card.highlight{background:#1a1a2e;color:#fff}
+.stat-card.highlight .s-lbl{color:rgba(255,255,255,0.6)}
 
 .section-title{font-size:13px;font-weight:600;color:#8e8e93;margin-bottom:8px;margin-top:16px}
 .section-title:first-child{margin-top:0}
 .clear-btn{background:none;border:none;font-size:11px;color:#e24b4a;cursor:pointer;padding:4px;font-family:inherit}
 .field-lbl{font-size:12px;color:#8e8e93;margin-bottom:4px;margin-top:6px}
-
 .num-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .num-row input{flex:1;padding:10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:18px;font-family:inherit;background:#fff;color:#1a1a2e;text-align:center}
 
-.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center}
+/* ── モーダル ── */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:200;align-items:center;justify-content:center;padding:16px}
 .modal-overlay.open{display:flex}
-.modal{background:#fff;border-radius:16px;padding:20px;width:92%;max-width:360px;max-height:90vh;overflow-y:auto}
-.modal h3{font-size:16px;font-weight:600;margin-bottom:14px}
+.modal{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:14px}
 .modal input,.modal select{width:100%;padding:9px 10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a2e;margin-bottom:10px;-webkit-appearance:none}
 
+/* 支払方法選択 */
+.pay-method-row{display:flex;gap:10px;margin-bottom:16px}
+.pay-method-btn{flex:1;padding:18px 8px;border-radius:12px;border:2px solid #d1d1d6;background:#fff;cursor:pointer;font-family:inherit;text-align:center;transition:all 0.15s}
+.pay-method-btn.active-cash{border-color:#2c7be5;background:#eff6ff}
+.pay-method-btn.active-paypay{border-color:#e21a32;background:#fff1f2}
+.pay-method-icon{font-size:28px;display:block;margin-bottom:4px}
+.pay-method-label{font-size:13px;font-weight:600;color:#1a1a2e}
+
+.change-display{background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;text-align:center;margin-bottom:12px}
+.change-display .lbl{font-size:12px;color:#16a34a;margin-bottom:4px}
+.change-display .amt{font-size:26px;font-weight:700;color:#15803d}
+.change-short{background:#fff1f2;border:1px solid #fca5a5;border-radius:10px;padding:12px;text-align:center;margin-bottom:12px}
+.change-short .lbl{font-size:12px;color:#dc2626;margin-bottom:4px}
+.change-short .amt{font-size:22px;font-weight:700;color:#dc2626}
+
+/* カラースウォッチ */
 .color-swatch-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .color-swatch{width:30px;height:30px;border-radius:6px;cursor:pointer;border:2.5px solid transparent;transition:transform 0.1s}
 .color-swatch.selected{border-color:#1a1a2e;transform:scale(1.15)}
-
 .shape-preview-row{display:flex;gap:8px;margin-bottom:10px}
 .shape-preview{width:60px;height:32px;background:#f2f2f7;border:0.5px solid #c7c7cc;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:#8e8e93}
 .shape-preview.selected{border:2px solid #1a1a2e;color:#1a1a2e;font-weight:600}
 
+/* 並び替え */
 .sort-item{display:flex;align-items:center;gap:8px;padding:8px;background:#f2f2f7;border-radius:10px;margin-bottom:6px;border:0.5px solid #d1d1d6}
 .sort-bar-thin{width:4px;height:28px;border-radius:2px;flex-shrink:0}
 .sort-arrows{display:flex;flex-direction:column;gap:2px}
@@ -105,128 +146,205 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
 .cat-legend-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .cat-legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#8e8e93}
 .cat-legend-bar{width:16px;height:4px;border-radius:2px}
-
 .empty-state{text-align:center;padding:32px 0;color:#8e8e93;font-size:14px}
-.status-flow{display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:11px;flex-wrap:wrap}
-.status-step{padding:4px 10px;border-radius:12px;background:#f2f2f7;color:#8e8e93;border:0.5px solid #d1d1d6}
+.status-flow{display:flex;align-items:center;gap:5px;margin-bottom:14px;font-size:11px;flex-wrap:wrap}
+.status-step{padding:3px 8px;border-radius:10px;background:#f2f2f7;color:#8e8e93;border:0.5px solid #d1d1d6}
 .status-step.active-step{background:#1a1a2e;color:#fff;border-color:#1a1a2e}
 .status-arrow{color:#8e8e93;font-size:10px}
 
-.offline-banner{background:#e24b4a;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:500;display:none}
-.offline-banner.show{display:block}
+/* 管理者画面 */
+.admin-shop-card{background:#f2f2f7;border-radius:12px;padding:14px;margin-bottom:10px;border:0.5px solid #d1d1d6}
+.admin-shop-card h4{font-size:14px;font-weight:700;margin-bottom:10px;color:#1a1a2e}
+.register-display{background:#fff;border-radius:8px;padding:10px;margin-top:8px;border:0.5px solid #d1d1d6}
+.register-display .r-lbl{font-size:11px;color:#8e8e93;margin-bottom:2px}
+.register-display .r-val{font-size:16px;font-weight:700;color:#1d9e75}
+
+/* チェックボックス風メニュー選択 */
+.menu-check-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid #d1d1d6}
+.menu-check-item:last-child{border-bottom:none}
+.menu-check-item input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex-shrink:0}
+.menu-check-item label{font-size:13px;flex:1;cursor:pointer}
 </style>
 </head>
 <body>
-<div class="app">
+<div id="root"></div>
 
-<div class="offline-banner" id="offlineBanner">⚠️ オフライン中 — データは接続回復後に同期されます</div>
-
-<div class="topbar">
-  <h1>飲食イベント販売システム</h1>
-  <span id="syncIndicator" class="sync-indicator sync-wait">接続中…</span>
-</div>
-
-<div class="tab-nav">
-  <div class="tab-row-main">
-    <button class="tab-btn active" onclick="switchTab('order')" id="tb-order">注文</button>
-    <button class="tab-btn" onclick="switchTab('payment')" id="tb-payment">会計待ち<span class="tab-badge" id="payBadge" style="display:none">0</span></button>
-    <button class="tab-btn" onclick="switchTab('waiting')" id="tb-waiting">受け渡し待ち<span class="tab-badge" id="waitBadge" style="display:none">0</span></button>
-  </div>
-  <div class="tab-row-sub">
-    <button class="tab-btn" onclick="switchTab('admin')" id="tb-admin">集計</button>
-    <button class="tab-btn" onclick="switchTab('settings')" id="tb-settings">設定</button>
+<!-- 店舗選択画面（起動時） -->
+<div id="shopSelectScreen" class="shop-select-screen" style="display:none">
+  <h2>🏪 店舗を選択</h2>
+  <p>この端末で使用する店舗を選んでください</p>
+  <div class="shop-list" id="shopList"></div>
+  <div style="margin-top:24px;width:100%;max-width:320px">
+    <button class="shop-select-btn" style="background:#fff;border-color:#c7c7cc;color:#8e8e93;font-size:13px" onclick="showInitAdminSetup()">
+      <span class="shop-icon">🔐</span><span>管理者設定（店舗登録はこちら）</span>
+    </button>
   </div>
 </div>
 
-<!-- 注文 -->
-<div id="tab-order" class="screen active">
-  <div class="cat-legend-row" id="catLegend"></div>
-  <div class="menu-grid" id="menuGrid"></div>
-  <div id="cartArea" style="display:none">
-    <div class="section-title">選択中</div>
-    <div class="card-area">
-      <div id="cartItems"></div>
-      <div class="total-row"><span class="lbl">合計</span><span class="amt" id="totalAmount">¥0</span></div>
-    </div>
-    <div class="num-row">
-      <span style="font-size:13px;color:#8e8e93;white-space:nowrap">番号札</span>
-      <input type="number" id="ticketNum" placeholder="任意（省略可）" min="1" max="999">
-    </div>
+<!-- 初期管理者設定モーダル（店舗選択画面から） -->
+<div class="modal-overlay" id="initAdminModal">
+  <div class="modal">
+    <h3>🔐 管理者設定</h3>
+    <div style="font-size:12px;color:#8e8e93;margin-bottom:14px">管理者パスワードを入力してください</div>
+    <input type="password" id="initAdminPw" placeholder="パスワード" style="width:100%;padding:10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:16px;font-family:inherit;background:#fff;color:#1a1a2e;margin-bottom:8px">
+    <div id="initAdminPwError" style="color:#e24b4a;font-size:12px;margin-bottom:8px;display:none">パスワードが違います</div>
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="clearCart()">クリア</button>
-      <button class="btn btn-primary" onclick="completeOrder()">注文確定 → 会計待ちへ</button>
+      <button class="btn btn-secondary" onclick="closeModal('initAdminModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="checkInitAdminPassword()">解除</button>
     </div>
   </div>
-  <div id="emptyCart" class="empty-state">メニューをタップして選択</div>
 </div>
 
-<!-- 会計待ち -->
-<div id="tab-payment" class="screen">
-  <div class="status-flow">
-    <span class="status-step">注文</span><span class="status-arrow">›</span>
-    <span class="status-step active-step">会計待ち</span><span class="status-arrow">›</span>
-    <span class="status-step">受け渡し待ち</span><span class="status-arrow">›</span>
-    <span class="status-step">完了</span>
+<!-- メインアプリ -->
+<div class="app" id="mainApp" style="display:none">
+  <div class="offline-banner" id="offlineBanner">⚠️ オフライン中 — 接続回復後に同期されます</div>
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>飲食イベント販売システム</h1>
+      <span class="shop-badge" id="shopBadge">店舗未選択</span>
+    </div>
+    <span id="syncIndicator" class="sync-indicator sync-wait">接続中…</span>
   </div>
-  <div id="paymentList"><div class="empty-state">会計待ちはありません</div></div>
-</div>
-
-<!-- 受け渡し待ち -->
-<div id="tab-waiting" class="screen">
-  <div class="status-flow">
-    <span class="status-step">注文</span><span class="status-arrow">›</span>
-    <span class="status-step">会計待ち</span><span class="status-arrow">›</span>
-    <span class="status-step active-step">受け渡し待ち</span><span class="status-arrow">›</span>
-    <span class="status-step">完了</span>
-  </div>
-  <div id="waitingList"><div class="empty-state">受け渡し待ちはありません</div></div>
-</div>
-
-<!-- 集計（管理者のみ） -->
-<div id="tab-admin" class="screen">
-  <div id="adminLock">
-    <div style="text-align:center;padding:40px 20px">
-      <div style="font-size:36px;margin-bottom:16px">🔒</div>
-      <div style="font-size:15px;font-weight:600;margin-bottom:6px">管理者認証</div>
-      <div style="font-size:13px;color:#8e8e93;margin-bottom:20px">パスワードを入力してください</div>
-      <input type="password" id="pwInput" placeholder="パスワード" style="width:100%;padding:10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:16px;font-family:inherit;background:#fff;color:#1a1a2e;margin-bottom:12px">
-      <button class="btn btn-primary" style="width:100%" onclick="checkPassword()">解除</button>
-      <div id="pwError" style="color:#e24b4a;font-size:13px;margin-top:8px;display:none">パスワードが違います</div>
+  <div class="tab-nav">
+    <div class="tab-row-main">
+      <button class="tab-btn active" onclick="switchTab('order')" id="tb-order">注文</button>
+      <button class="tab-btn" onclick="switchTab('payment')" id="tb-payment">会計待ち<span class="tab-badge" id="payBadge" style="display:none">0</span></button>
+      <button class="tab-btn" onclick="switchTab('waiting')" id="tb-waiting">受け渡し待ち<span class="tab-badge" id="waitBadge" style="display:none">0</span></button>
+    </div>
+    <div class="tab-row-sub">
+      <button class="tab-btn" onclick="switchTab('stats')" id="tb-stats">集計</button>
+      <button class="tab-btn" onclick="switchTab('settings')" id="tb-settings">設定</button>
     </div>
   </div>
-  <div id="adminContent" style="display:none">
-    <div class="btn-row" style="margin-bottom:12px">
-      <button class="btn btn-secondary btn-sm" onclick="lockAdmin()">ロック</button>
-      <button class="btn btn-danger btn-sm" onclick="resetStats()">集計リセット</button>
+
+  <!-- 注文タブ -->
+  <div id="tab-order" class="screen active">
+    <div class="cat-legend-row" id="catLegend"></div>
+    <div class="menu-grid" id="menuGrid"></div>
+    <div id="cartArea" style="display:none">
+      <div class="section-title">選択中</div>
+      <div class="card-area">
+        <div id="cartItems"></div>
+        <div class="total-row"><span class="lbl">合計</span><span class="amt" id="totalAmount">¥0</span></div>
+      </div>
+      <div class="num-row">
+        <span style="font-size:13px;color:#8e8e93;white-space:nowrap">番号札</span>
+        <input type="number" id="ticketNum" placeholder="任意（省略可）" min="1" max="999">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="clearCart()">クリア</button>
+        <button class="btn btn-primary" onclick="completeOrder()">注文確定 → 会計待ちへ</button>
+      </div>
     </div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="s-lbl">総売上</div><div class="s-val" id="statTotal">¥0</div></div>
-      <div class="stat-card"><div class="s-lbl">会計件数</div><div class="s-val" id="statCount">0件</div></div>
+    <div id="emptyCart" class="empty-state">メニューをタップして選択</div>
+  </div>
+
+  <!-- 会計待ちタブ -->
+  <div id="tab-payment" class="screen">
+    <div class="status-flow">
+      <span class="status-step">注文</span><span class="status-arrow">›</span>
+      <span class="status-step active-step">会計待ち</span><span class="status-arrow">›</span>
+      <span class="status-step">受け渡し待ち</span><span class="status-arrow">›</span>
+      <span class="status-step">完了</span>
     </div>
-    <div class="section-title">メニュー別集計</div>
-    <div class="card-area" id="menuStats"></div>
-    <div class="section-title">在庫状況</div>
-    <div class="card-area" id="stockStatus"></div>
+    <div id="paymentList"><div class="empty-state">会計待ちはありません</div></div>
+  </div>
+
+  <!-- 受け渡し待ちタブ -->
+  <div id="tab-waiting" class="screen">
+    <div class="status-flow">
+      <span class="status-step">注文</span><span class="status-arrow">›</span>
+      <span class="status-step">会計待ち</span><span class="status-arrow">›</span>
+      <span class="status-step active-step">受け渡し待ち</span><span class="status-arrow">›</span>
+      <span class="status-step">完了</span>
+    </div>
+    <div id="waitingList"><div class="empty-state">受け渡し待ちはありません</div></div>
+  </div>
+
+  <!-- 集計タブ -->
+  <div id="tab-stats" class="screen">
+    <div id="statsLock">
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:36px;margin-bottom:16px">🔒</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">管理者認証</div>
+        <div style="font-size:13px;color:#8e8e93;margin-bottom:20px">パスワードを入力してください</div>
+        <input type="password" id="statsPwInput" placeholder="パスワード" style="width:100%;padding:10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:16px;font-family:inherit;background:#fff;color:#1a1a2e;margin-bottom:12px">
+        <button class="btn btn-primary" style="width:100%" onclick="checkStatsPassword()">解除</button>
+        <div id="statsPwError" style="color:#e24b4a;font-size:13px;margin-top:8px;display:none">パスワードが違います</div>
+      </div>
+    </div>
+    <div id="statsContent" style="display:none">
+      <div class="btn-row" style="margin-bottom:8px">
+        <button class="btn btn-secondary btn-sm" onclick="lockStats()">ロック</button>
+        <button class="btn btn-success btn-sm" onclick="exportExcel()">📊 Excel出力</button>
+      </div>
+      <div style="background:#fff1f2;border:0.5px solid #fca5a5;border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:#dc2626;margin-bottom:8px">🗑️ データリセット（注文・集計・在庫使用数）</div>
+        <div style="font-size:11px;color:#8e8e93;margin-bottom:10px">メニュー・店舗設定は消えません。テスト運用後の本番切り替えに使用してください。</div>
+        <div class="btn-row">
+          <button class="btn btn-danger btn-sm" style="flex:1" onclick="resetAllStats()">全店舗まとめてリセット</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1;border-color:#fca5a5;color:#dc2626" onclick="showShopResetModal()">店舗を選んでリセット</button>
+        </div>
+      </div>
+
+      <!-- 全体集計 -->
+      <div class="section-title">📊 イベント全体集計</div>
+      <div class="stats-grid-3" id="globalStatsGrid"></div>
+      <div class="card-area" id="globalMenuStats"></div>
+
+      <!-- 店舗別集計 -->
+      <div class="section-title">🏪 店舗別集計</div>
+      <div id="shopStatsArea"></div>
+    </div>
+  </div>
+
+  <!-- 設定タブ -->
+  <div id="tab-settings" class="screen">
+    <!-- 管理者設定（パスワード必要） -->
+    <div id="settingsAdminArea">
+      <div id="settingsAdminLock">
+        <div style="background:#f2f2f7;border-radius:12px;padding:16px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">🔐 管理者設定</div>
+          <div style="font-size:12px;color:#8e8e93;margin-bottom:10px">店舗管理・メニュー管理・レジ準備金の設定は管理者認証が必要です</div>
+          <input type="password" id="settingsPwInput" placeholder="管理者パスワード" style="width:100%;padding:9px 10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a2e;margin-bottom:8px">
+          <button class="btn btn-primary" style="width:100%" onclick="checkSettingsPassword()">管理者設定を開く</button>
+          <div id="settingsPwError" style="color:#e24b4a;font-size:12px;margin-top:6px;display:none">パスワードが違います</div>
+        </div>
+      </div>
+
+      <div id="settingsAdminContent" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:13px;font-weight:600;color:#1d9e75">✓ 管理者モード</span>
+          <button class="btn btn-secondary btn-sm" onclick="lockSettingsAdmin()">ロック</button>
+        </div>
+
+        <div class="section-title">🏪 店舗管理</div>
+        <div class="card-area" id="shopManageList"></div>
+        <button class="btn btn-secondary" style="width:100%;margin-bottom:16px" onclick="showAddShop()">＋ 店舗を追加</button>
+
+        <div class="section-title">🍽️ メニュー管理（全店共通）</div>
+        <div class="card-area" id="menuList"></div>
+        <button class="btn btn-secondary" style="width:100%;margin-top:8px;margin-bottom:16px" onclick="showAddMenu(null)">＋ メニューを追加</button>
+      </div>
+    </div>
+
+    <!-- 端末設定（認証不要） -->
+    <div class="section-title">📱 この端末の設定</div>
+    <div class="card-area">
+      <div class="field-lbl">表示順・非表示</div>
+      <div id="sortSettings" style="margin-top:8px"></div>
+    </div>
+    <div class="card-area" style="margin-top:8px">
+      <div class="field-lbl">ボタン形状</div>
+      <div class="shape-preview-row" id="shapeSelector" style="margin-top:6px"></div>
+    </div>
+    <div style="margin-top:8px">
+      <button class="btn btn-secondary" style="width:100%" onclick="showShopSelect()">店舗を変更する</button>
+    </div>
   </div>
 </div>
 
-<!-- 設定 -->
-<div id="tab-settings" class="screen">
-  <div class="section-title">メニュー管理（全端末共通）</div>
-  <div class="card-area" id="menuList"></div>
-  <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="showAddMenu(null)">＋ メニューを追加</button>
-  <div class="section-title">表示順・非表示（この端末のみ）</div>
-  <div id="sortSettings"></div>
-  <div class="section-title">ボタン形状（この端末のみ）</div>
-  <div class="card-area">
-    <div class="shape-preview-row" id="shapeSelector"></div>
-
-    <div class="field-lbl" style="margin-top:12px">端末名</div>
-    <input type="text" id="terminalName" placeholder="端末A" style="width:100%;padding:8px 10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:14px;font-family:inherit;background:#fff;margin-bottom:8px">
-    <button class="btn btn-primary" style="width:100%" onclick="saveTerminalName()">端末名を保存</button>
-  </div>
-</div>
-</div>
+<!-- ══ モーダル群 ══ -->
 
 <!-- 会計モーダル -->
 <div class="modal-overlay" id="paymentModal">
@@ -234,13 +352,71 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
     <h3>会計</h3>
     <div id="paymentDetail" style="margin-bottom:14px"></div>
     <div style="background:#f2f2f7;border-radius:10px;padding:14px;margin-bottom:16px;text-align:center">
-      <div style="font-size:13px;color:#8e8e93;margin-bottom:4px">お支払い金額</div>
-      <div style="font-size:30px;font-weight:700" id="paymentTotal">¥0</div>
+      <div style="font-size:12px;color:#8e8e93;margin-bottom:4px">請求金額</div>
+      <div style="font-size:32px;font-weight:700;color:#1a1a2e" id="paymentTotalDisp">¥0</div>
     </div>
-    <div style="font-size:13px;color:#8e8e93;margin-bottom:16px">お金を受領後、完了ボタンを押してください</div>
-    <div class="btn-row">
-      <button class="btn btn-danger" onclick="cancelOrder()">キャンセル</button>
-      <button class="btn btn-success" onclick="completePayment()">受領完了 → 受け渡しへ</button>
+
+    <!-- Step1: 支払方法選択 -->
+    <div id="payStep1">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">支払方法を選択</div>
+      <div class="pay-method-row">
+        <button class="pay-method-btn" id="btnCash" onclick="selectPayMethod('cash')">
+          <span class="pay-method-icon">💴</span>
+          <span class="pay-method-label">現金</span>
+        </button>
+        <button class="pay-method-btn" id="btnPaypay" onclick="selectPayMethod('paypay')">
+          <span class="pay-method-icon">📱</span>
+          <span class="pay-method-label">PayPay</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step2a: 現金 -->
+    <div id="payStep2Cash" style="display:none">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">💴 現金</div>
+      <div class="field-lbl">お預かり金額</div>
+      <input type="number" id="receivedAmount" placeholder="0" min="0" oninput="calcChange()" style="width:100%;padding:10px;border:0.5px solid #c7c7cc;border-radius:10px;font-size:22px;font-family:inherit;background:#fff;color:#1a1a2e;text-align:right;margin-bottom:10px">
+      <div id="changeArea" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="backToPayStep1()">戻る</button>
+        <button class="btn btn-success" id="btnCompleteCash" onclick="completePayment('cash')" disabled>受領完了 → 受け渡しへ</button>
+      </div>
+    </div>
+
+    <!-- Step2b: PayPay -->
+    <div id="payStep2Paypay" style="display:none">
+      <div style="background:#fff1f2;border-radius:10px;padding:16px;text-align:center;margin-bottom:14px">
+        <div style="font-size:28px;margin-bottom:6px">📱</div>
+        <div style="font-size:14px;font-weight:600;color:#e21a32">PayPay</div>
+        <div style="font-size:12px;color:#8e8e93;margin-top:4px">お客様のお支払いを確認後、完了を押してください</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="backToPayStep1()">戻る</button>
+        <button class="btn btn-paypay" onclick="completePayment('paypay')">支払完了 → 受け渡しへ</button>
+      </div>
+    </div>
+
+    <!-- キャンセルボタン（常時表示） -->
+    <div style="margin-top:12px">
+      <button class="btn btn-danger" style="width:100%" onclick="cancelOrder()">注文キャンセル（在庫を戻す）</button>
+    </div>
+  </div>
+</div>
+
+<!-- 店舗追加・編集モーダル -->
+<div class="modal-overlay" id="addShopModal">
+  <div class="modal">
+    <h3 id="addShopTitle">店舗を追加</h3>
+    <div class="field-lbl">店舗名</div>
+    <input type="text" id="newShopName" placeholder="例：Aブース">
+    <div class="field-lbl">レジ準備金（釣り銭用）</div>
+    <input type="number" id="newShopCash" placeholder="例：10000" min="0">
+    <div class="field-lbl" style="margin-bottom:8px">表示メニュー（初期設定）</div>
+    <div id="shopMenuChecks" class="card-area" style="max-height:200px;overflow-y:auto"></div>
+    <input type="hidden" id="editShopId">
+    <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-secondary" onclick="closeModal('addShopModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveShop()">保存</button>
     </div>
   </div>
 </div>
@@ -283,15 +459,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
   </div>
 </div>
 
+
+<!-- 店舗別リセットモーダル -->
+<div class="modal-overlay" id="shopResetModal">
+  <div class="modal">
+    <h3>🗑️ 店舗を選んでリセット</h3>
+    <div style="font-size:12px;color:#8e8e93;margin-bottom:14px">リセットする店舗を選択してください。注文・集計・在庫使用数が消去されます。メニュー・店舗設定は保持されます。</div>
+    <div id="shopResetList" style="margin-bottom:14px"></div>
+    <button class="btn btn-secondary" style="width:100%" onclick="closeModal('shopResetModal')">キャンセル</button>
+  </div>
+</div>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, push, update, remove, off }
+import { getDatabase, ref, onValue, set, push, update, remove }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  Firebase 設定
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 const firebaseConfig = {
   apiKey: "AIzaSyCV0NLe1Xxt4Xe1_Cnvbf581H6pXy41dqE",
   authDomain: "event-pos-system-fe3c7.firebaseapp.com",
@@ -302,46 +488,50 @@ const firebaseConfig = {
   appId: "1:909283420085:web:ac7ae9664fbd19e33fdbfc"
 };
 const fbApp = initializeApp(firebaseConfig);
-const db = getDatabase(fbApp);
+const db    = getDatabase(fbApp);
 
-// ═══════════════════════════════════════════
-//  定数・端末ローカル設定
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  定数
+// ══════════════════════════════════════════
+const ADMIN_PW = '0523';
 const COLORS = [
-  {bg:'#CECBF6',text:'#26215C',label:'パープル'},
-  {bg:'#9FE1CB',text:'#04342C',label:'ティール'},
-  {bg:'#B5D4F4',text:'#042C53',label:'ブルー'},
-  {bg:'#F5C4B3',text:'#4A1B0C',label:'コーラル'},
-  {bg:'#FAC775',text:'#412402',label:'アンバー'},
-  {bg:'#C0DD97',text:'#173404',label:'グリーン'},
-  {bg:'#D3D1C7',text:'#2C2C2A',label:'グレー'},
-  {bg:'#F4C0D1',text:'#4B1528',label:'ピンク'},
+  {bg:'#CECBF6',text:'#26215C'},{bg:'#9FE1CB',text:'#04342C'},
+  {bg:'#B5D4F4',text:'#042C53'},{bg:'#F5C4B3',text:'#4A1B0C'},
+  {bg:'#FAC775',text:'#412402'},{bg:'#C0DD97',text:'#173404'},
+  {bg:'#D3D1C7',text:'#2C2C2A'},{bg:'#F4C0D1',text:'#4B1528'},
 ];
-const CAT_BAR  = {drink:'#378ADD', food:'#D85A30', other:'#888780'};
-const CAT_LBL  = {drink:'ドリンク', food:'フード', other:'その他'};
-const TAB_IDS  = ['order','payment','waiting','admin','settings'];
+const CAT_BAR = {drink:'#378ADD', food:'#D85A30', other:'#888780'};
+const CAT_LBL = {drink:'ドリンク', food:'フード', other:'その他'};
+const TAB_IDS = ['order','payment','waiting','stats','settings'];
 
-// 端末ローカル（localStorage）
-let localOrder   = JSON.parse(localStorage.getItem('localOrder')   || 'null');
-let localHidden  = JSON.parse(localStorage.getItem('localHidden')  || '[]');
-let currentShape = localStorage.getItem('btnShape') || 'rect';
-const adminPw    = '0523';
-let terminalName = localStorage.getItem('terminalName') || '端末A';
+// ══════════════════════════════════════════
+//  状態変数
+// ══════════════════════════════════════════
+// Firebase同期
+let shops     = {};   // {shopId: {name, cashRegister, menuIds:[]}}
+let menus     = {};   // {menuId: {name,price,cat,colorIdx,stock}}
+let stockUsed = {};   // {menuId: 使用数}
+let payOrders = {};   // {shopId: {orderId: order}}
+let waitOrders= {};   // {shopId: {orderId: order}}
+let allStats  = {};   // {shopId: {total,cash,paypay,count,byMenu{}}}
 
-// アプリ状態（Firebase同期）
-let menus        = {};   // {id: {name,price,cat,colorIdx,stock}}
-let stockUsed    = {};   // {menuId: 使用数}  ← Firebase同期
-let payOrders    = {};   // {orderId: order}  ← Firebase同期
-let waitOrders   = {};   // {orderId: order}  ← Firebase同期
-let stats        = {total:0, count:0, byMenu:{}};  // Firebase同期
+// 端末ローカル
+let currentShopId   = localStorage.getItem('currentShopId') || null;
+let localOrder      = JSON.parse(localStorage.getItem('localOrder')  || 'null');
+let localHidden     = JSON.parse(localStorage.getItem('localHidden') || '[]');
+let currentShape    = localStorage.getItem('btnShape') || 'rect';
 
-let cart         = {};
-let adminUnlocked = false;
-let currentPayId  = null;
+// UI状態
+let cart            = {};
+let adminUnlocked   = false;   // 集計タブ
+let settingsUnlocked= false;   // 設定タブ管理者エリア
+let currentPayId    = null;
+let currentPayTotal = 0;
 
-// ─ 接続状態表示 ─
-const connRef = ref(db, '.info/connected');
-onValue(connRef, snap => {
+// ══════════════════════════════════════════
+//  Firebase 接続監視
+// ══════════════════════════════════════════
+onValue(ref(db, '.info/connected'), snap => {
   const ok = snap.val();
   const el = document.getElementById('syncIndicator');
   const bn = document.getElementById('offlineBanner');
@@ -356,19 +546,26 @@ onValue(connRef, snap => {
   }
 });
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  Firebase リアルタイム購読
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
+onValue(ref(db,'shops'), snap => {
+  shops = snap.val() || {};
+  renderShopSelectScreen();
+  if (document.getElementById('settingsAdminContent').style.display !== 'none') renderShopManage();
+  if (adminUnlocked) renderStats();
+});
 onValue(ref(db,'menus'), snap => {
   menus = snap.val() || {};
   syncLocalOrder();
   renderMenuGrid();
-  if (document.getElementById('tab-settings').classList.contains('active')) renderSettings();
+  if (document.getElementById('tab-settings').classList.contains('active')) renderSettingsLocal();
+  if (document.getElementById('settingsAdminContent').style.display !== 'none') renderMenuManage();
 });
 onValue(ref(db,'stockUsed'), snap => {
   stockUsed = snap.val() || {};
   renderMenuGrid();
-  if (adminUnlocked) renderAdmin();
+  if (adminUnlocked) renderStats();
 });
 onValue(ref(db,'payOrders'), snap => {
   payOrders = snap.val() || {};
@@ -381,17 +578,111 @@ onValue(ref(db,'waitOrders'), snap => {
   if (document.getElementById('tab-waiting').classList.contains('active')) renderWaitingList();
 });
 onValue(ref(db,'stats'), snap => {
-  stats = snap.val() || {total:0, count:0, byMenu:{}};
-  if (adminUnlocked) renderAdmin();
+  allStats = snap.val() || {};
+  if (adminUnlocked) renderStats();
 });
 
-// ═══════════════════════════════════════════
-//  ローカル設定ヘルパー
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  起動処理・店舗選択
+// ══════════════════════════════════════════
+function init() {
+  if (currentShopId) {
+    showMainApp();
+  } else {
+    showShopSelectScreen();
+  }
+}
+
+function showShopSelectScreen() {
+  document.getElementById('shopSelectScreen').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'none';
+  renderShopSelectScreen();
+}
+window.showShopSelect = showShopSelectScreen;
+
+// 店舗選択画面からの管理者設定
+function showInitAdminSetup() {
+  document.getElementById('initAdminPw').value = '';
+  document.getElementById('initAdminPwError').style.display = 'none';
+  document.getElementById('initAdminModal').classList.add('open');
+}
+window.showInitAdminSetup = showInitAdminSetup;
+
+function checkInitAdminPassword() {
+  if (document.getElementById('initAdminPw').value === ADMIN_PW) {
+    closeModal('initAdminModal');
+    // メインアプリの設定タブを管理者解除済みで開く
+    settingsUnlocked = true;
+    document.getElementById('shopSelectScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'flex';
+    document.getElementById('mainApp').style.flexDirection = 'column';
+    document.getElementById('shopBadge').textContent = '🔐 管理者モード';
+    // 設定タブへ遷移し管理者エリアを表示
+    switchTab('settings');
+    document.getElementById('settingsAdminLock').style.display = 'none';
+    document.getElementById('settingsAdminContent').style.display = 'block';
+    renderShopManage();
+    renderMenuManage();
+  } else {
+    document.getElementById('initAdminPwError').style.display = 'block';
+  }
+}
+window.checkInitAdminPassword = checkInitAdminPassword;
+
+function renderShopSelectScreen() {
+  const list = document.getElementById('shopList');
+  if (!list) return;
+  list.innerHTML = '';
+  const shopEntries = Object.entries(shops);
+  if (!shopEntries.length) {
+    list.innerHTML = '<div style="text-align:center;color:#8e8e93;font-size:13px;padding:20px">店舗がまだ登録されていません<br>管理者に設定を依頼してください</div>';
+    return;
+  }
+  shopEntries.forEach(([id, shop]) => {
+    const btn = document.createElement('button');
+    btn.className = 'shop-select-btn';
+    btn.innerHTML = `<span class="shop-icon">🏪</span><span>${shop.name}</span>`;
+    btn.onclick = () => selectShop(id, shop.name);
+    list.appendChild(btn);
+  });
+}
+
+function selectShop(id, name) {
+  currentShopId = id;
+  localStorage.setItem('currentShopId', id);
+  showMainApp(name);
+}
+
+function showMainApp(shopName) {
+  const name = shopName || (shops[currentShopId] && shops[currentShopId].name) || '不明';
+  document.getElementById('shopSelectScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'flex';
+  document.getElementById('mainApp').style.flexDirection = 'column';
+  document.getElementById('shopBadge').textContent = '🏪 ' + name;
+  // 店舗のデフォルトメニュー表示を反映（初回のみ）
+  const shop = shops[currentShopId];
+  if (shop && shop.menuIds && !localStorage.getItem('localHidden_' + currentShopId)) {
+    const allMenuIds = Object.keys(menus);
+    localHidden = allMenuIds.filter(id => !shop.menuIds.includes(id));
+    localStorage.setItem('localHidden_' + currentShopId, JSON.stringify(localHidden));
+    localStorage.setItem('localHidden', JSON.stringify(localHidden));
+  } else {
+    const saved = localStorage.getItem('localHidden_' + currentShopId);
+    if (saved) localHidden = JSON.parse(saved);
+  }
+  syncLocalOrder();
+  renderMenuGrid();
+  updateBadges();
+}
+
+// ══════════════════════════════════════════
+//  ローカル設定
+// ══════════════════════════════════════════
 function saveLocal() {
-  localStorage.setItem('localOrder',  JSON.stringify(localOrder));
+  localStorage.setItem('localOrder', JSON.stringify(localOrder));
   localStorage.setItem('localHidden', JSON.stringify(localHidden));
-  localStorage.setItem('btnShape',    currentShape);
+  if (currentShopId) localStorage.setItem('localHidden_' + currentShopId, JSON.stringify(localHidden));
+  localStorage.setItem('btnShape', currentShape);
 }
 function syncLocalOrder() {
   const ids = Object.keys(menus);
@@ -407,9 +698,9 @@ function visibleMenus() {
   return orderedMenus().filter(m => !localHidden.includes(m.id));
 }
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  在庫ヘルパー
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 function getStock(id) {
   const m = menus[id];
   if (!m || m.stock == null) return null;
@@ -424,25 +715,26 @@ function stockClass(id) {
   return 'ok';
 }
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  タブ切替
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 function switchTab(t) {
   TAB_IDS.forEach(id => {
     document.getElementById('tb-' + id).classList.toggle('active', id === t);
     document.getElementById('tab-' + id).classList.toggle('active', id === t);
   });
-  if (t === 'settings') renderSettings();
   if (t === 'payment')  renderPaymentList();
   if (t === 'waiting')  renderWaitingList();
-  if (t === 'admin')    renderAdmin();
+  if (t === 'stats')    renderStats();
+  if (t === 'settings') { renderSettingsLocal(); if(settingsUnlocked){renderShopManage();renderMenuManage();} }
 }
 window.switchTab = switchTab;
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  注文タブ
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 function renderMenuGrid() {
+  if (!document.getElementById('menuGrid')) return;
   const g = document.getElementById('menuGrid');
   g.innerHTML = '';
   const vis = visibleMenus();
@@ -465,16 +757,11 @@ function renderMenuGrid() {
     btn.disabled = out;
     btn.innerHTML =
       `<span class="cat-bar" style="background:${bar}"></span>` +
-      `<span class="btn-body">` +
-        `<span class="menu-name">${m.name}</span>` +
-        `<span class="menu-price">¥${m.price.toLocaleString()}</span>` +
-        sHtml +
-      `</span>` +
+      `<span class="btn-body"><span class="menu-name">${m.name}</span><span class="menu-price">¥${m.price.toLocaleString()}</span>${sHtml}</span>` +
       (cnt ? `<span class="sel-badge">${cnt}</span>` : '');
     btn.onclick = () => addToCart(m.id);
     g.appendChild(btn);
   });
-  // 凡例
   const cats = [...new Set(vis.map(m => m.cat))];
   document.getElementById('catLegend').innerHTML = cats.map(c =>
     `<div class="cat-legend-item"><div class="cat-legend-bar" style="background:${CAT_BAR[c]||'#888'}"></div>${CAT_LBL[c]||c}</div>`
@@ -492,7 +779,6 @@ function removeFromCart(id) {
   renderMenuGrid(); renderCart();
 }
 window.removeFromCart = removeFromCart;
-
 function clearCart() { cart = {}; renderMenuGrid(); renderCart(); }
 window.clearCart = clearCart;
 
@@ -514,12 +800,15 @@ function renderCart() {
 }
 
 async function completeOrder() {
+  if (!currentShopId) { alert('店舗を選択してください'); return; }
   const keys = Object.keys(cart).filter(k => cart[k] > 0);
   if (!keys.length) return;
   const ticketRaw = document.getElementById('ticketNum').value;
   const ticket = ticketRaw ? parseInt(ticketRaw) : null;
-  const allOrders = {...payOrders, ...waitOrders};
-  if (ticket !== null && Object.values(allOrders).find(o => o.ticket === ticket)) {
+  // 番号札重複チェック（同店舗内）
+  const shopPay  = (payOrders[currentShopId]  && Object.values(payOrders[currentShopId]))  || [];
+  const shopWait = (waitOrders[currentShopId] && Object.values(waitOrders[currentShopId])) || [];
+  if (ticket !== null && [...shopPay, ...shopWait].find(o => o.ticket === ticket)) {
     alert(`番号札 ${ticket} はすでに使用中です`); return;
   }
   let total = 0;
@@ -531,14 +820,12 @@ async function completeOrder() {
     items.push({id: k, name: m.name, qty: cart[k], price: sub});
     stockUpdate[k] = (stockUsed[k] || 0) + cart[k];
   });
-  const order = {
-    ticket, items, total,
+  const newRef = push(ref(db, `payOrders/${currentShopId}`));
+  await set(newRef, {
+    id: newRef.key, shopId: currentShopId, ticket, items, total,
     time: new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}),
     createdAt: Date.now()
-  };
-  const newRef = push(ref(db, 'payOrders'));
-  order.id = newRef.key;
-  await set(newRef, order);
+  });
   await update(ref(db, 'stockUsed'), stockUpdate);
   cart = {};
   document.getElementById('ticketNum').value = '';
@@ -546,12 +833,13 @@ async function completeOrder() {
 }
 window.completeOrder = completeOrder;
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  会計待ちタブ
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 function renderPaymentList() {
   const el = document.getElementById('paymentList');
-  const orders = Object.values(payOrders).sort((a,b) => a.createdAt - b.createdAt);
+  const shopOrders = payOrders[currentShopId] || {};
+  const orders = Object.values(shopOrders).sort((a,b) => a.createdAt - b.createdAt);
   if (!orders.length) { el.innerHTML = '<div class="empty-state">会計待ちはありません</div>'; return; }
   el.innerHTML = '';
   orders.forEach(o => {
@@ -567,61 +855,124 @@ function renderPaymentList() {
 }
 
 function openPaymentModal(id) {
-  const o = payOrders[id]; if (!o) return;
-  currentPayId = id;
-  const label = o.ticket != null ? `No.${o.ticket}` : '#' + String(o.id).slice(-4);
-  let detail = `<div style="font-size:13px;color:#8e8e93;margin-bottom:8px">${label}</div>`;
+  const shopOrders = payOrders[currentShopId] || {};
+  const o = shopOrders[id]; if (!o) return;
+  currentPayId    = id;
+  currentPayTotal = o.total;
+  // 明細
+  let detail = `<div style="font-size:13px;color:#8e8e93;margin-bottom:8px">${o.ticket != null ? `No.${o.ticket}` : '#'+String(o.id).slice(-4)}</div>`;
   o.items.forEach(i => { detail += `<div class="row"><span>${i.name} × ${i.qty}</span><span>¥${i.price.toLocaleString()}</span></div>`; });
   document.getElementById('paymentDetail').innerHTML = detail;
-  document.getElementById('paymentTotal').textContent = '¥' + o.total.toLocaleString();
+  document.getElementById('paymentTotalDisp').textContent = '¥' + o.total.toLocaleString();
+  // ステップリセット
+  document.getElementById('payStep1').style.display = 'block';
+  document.getElementById('payStep2Cash').style.display = 'none';
+  document.getElementById('payStep2Paypay').style.display = 'none';
+  document.getElementById('receivedAmount').value = '';
+  document.getElementById('changeArea').style.display = 'none';
+  document.getElementById('btnCompleteCash').disabled = true;
+  document.getElementById('btnCash').className = 'pay-method-btn';
+  document.getElementById('btnPaypay').className = 'pay-method-btn';
   document.getElementById('paymentModal').classList.add('open');
 }
 window.openPaymentModal = openPaymentModal;
 
-async function completePayment() {
-  const o = payOrders[currentPayId]; if (!o) return;
+function selectPayMethod(method) {
+  document.getElementById('payStep1').style.display = 'none';
+  if (method === 'cash') {
+    document.getElementById('payStep2Cash').style.display = 'block';
+    document.getElementById('payStep2Paypay').style.display = 'none';
+  } else {
+    document.getElementById('payStep2Cash').style.display = 'none';
+    document.getElementById('payStep2Paypay').style.display = 'block';
+  }
+}
+window.selectPayMethod = selectPayMethod;
+
+function backToPayStep1() {
+  document.getElementById('payStep1').style.display = 'block';
+  document.getElementById('payStep2Cash').style.display = 'none';
+  document.getElementById('payStep2Paypay').style.display = 'none';
+}
+window.backToPayStep1 = backToPayStep1;
+
+function calcChange() {
+  const received = parseInt(document.getElementById('receivedAmount').value) || 0;
+  const total    = currentPayTotal;
+  const changeEl = document.getElementById('changeArea');
+  const completeBtn = document.getElementById('btnCompleteCash');
+  if (received <= 0) {
+    changeEl.style.display = 'none';
+    completeBtn.disabled = true;
+    return;
+  }
+  if (received >= total) {
+    const change = received - total;
+    changeEl.style.display = 'block';
+    changeEl.innerHTML = `<div class="change-display"><div class="lbl">お釣り</div><div class="amt">¥${change.toLocaleString()}</div></div>`;
+    completeBtn.disabled = false;
+  } else {
+    const short = total - received;
+    changeEl.style.display = 'block';
+    changeEl.innerHTML = `<div class="change-short"><div class="lbl">不足金額</div><div class="amt">¥${short.toLocaleString()}</div></div>`;
+    completeBtn.disabled = true;
+  }
+}
+window.calcChange = calcChange;
+
+async function completePayment(method) {
+  const shopOrders = payOrders[currentShopId] || {};
+  const o = shopOrders[currentPayId]; if (!o) return;
   // 集計更新
-  const newStats = JSON.parse(JSON.stringify(stats));
-  newStats.total  = (newStats.total || 0) + o.total;
-  newStats.count  = (newStats.count || 0) + 1;
-  if (!newStats.byMenu) newStats.byMenu = {};
+  const curStats = allStats[currentShopId] || {total:0, cash:0, paypay:0, count:0, byMenu:{}};
+  const ns = JSON.parse(JSON.stringify(curStats));
+  ns.total   = (ns.total   || 0) + o.total;
+  ns.count   = (ns.count   || 0) + 1;
+  ns.cash    = (ns.cash    || 0) + (method === 'cash'   ? o.total : 0);
+  ns.paypay  = (ns.paypay  || 0) + (method === 'paypay' ? o.total : 0);
+  if (!ns.byMenu) ns.byMenu = {};
   o.items.forEach(i => {
-    if (!newStats.byMenu[i.id]) newStats.byMenu[i.id] = {name: i.name, qty: 0, total: 0};
-    newStats.byMenu[i.id].qty   += i.qty;
-    newStats.byMenu[i.id].total += i.price;
+    if (!ns.byMenu[i.id]) ns.byMenu[i.id] = {name: i.name, qty: 0, total: 0};
+    ns.byMenu[i.id].qty   += i.qty;
+    ns.byMenu[i.id].total += i.price;
   });
-  await set(ref(db, 'stats'), newStats);
-  // payOrders → waitOrders へ移動
-  await set(ref(db, `waitOrders/${o.id}`), o);
-  await remove(ref(db, `payOrders/${o.id}`));
+  await set(ref(db, `stats/${currentShopId}`), ns);
+  // waitOrders へ移動（支払方法を付与）
+  await set(ref(db, `waitOrders/${currentShopId}/${o.id}`), {...o, payMethod: method});
+  await remove(ref(db, `payOrders/${currentShopId}/${o.id}`));
   closeModal('paymentModal');
 }
 window.completePayment = completePayment;
 
 async function cancelOrder() {
-  const o = payOrders[currentPayId]; if (!o) return;
+  const shopOrders = payOrders[currentShopId] || {};
+  const o = shopOrders[currentPayId]; if (!o) return;
   if (!confirm('この注文をキャンセルしますか？在庫数は戻ります。')) return;
   const stockUpdate = {};
   o.items.forEach(i => { stockUpdate[i.id] = Math.max(0, (stockUsed[i.id] || 0) - i.qty); });
   await update(ref(db, 'stockUsed'), stockUpdate);
-  await remove(ref(db, `payOrders/${o.id}`));
+  await remove(ref(db, `payOrders/${currentShopId}/${o.id}`));
   closeModal('paymentModal');
 }
 window.cancelOrder = cancelOrder;
 
-// ═══════════════════════════════════════════
-//  受け渡し待ちタブ
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  受け渡し待ちタブ（同店舗のみ）
+// ══════════════════════════════════════════
 function renderWaitingList() {
   const el = document.getElementById('waitingList');
-  const orders = Object.values(waitOrders).sort((a,b) => a.createdAt - b.createdAt);
+  const shopOrders = waitOrders[currentShopId] || {};
+  const orders = Object.values(shopOrders).sort((a,b) => a.createdAt - b.createdAt);
   if (!orders.length) { el.innerHTML = '<div class="empty-state">受け渡し待ちはありません</div>'; return; }
   el.innerHTML = '';
   orders.forEach(o => {
     const label = o.ticket != null ? `No.${o.ticket}` : '#' + String(o.id).slice(-4);
+    const payBadge = o.payMethod === 'cash'
+      ? '<span class="pay-badge pay-cash">現金</span>'
+      : '<span class="pay-badge pay-paypay">PayPay</span>';
     const card = document.createElement('div'); card.className = 'order-card';
     card.innerHTML =
-      `<div class="order-card-header"><span class="order-num">${label}</span><span class="order-time">${o.time}</span></div>` +
+      `<div class="order-card-header"><span class="order-num">${label}${payBadge}</span><span class="order-time">${o.time}</span></div>` +
       `<div class="order-items">${o.items.map(i=>`${i.name}×${i.qty}`).join('、')}</div>` +
       `<div class="order-total-txt">¥${o.total.toLocaleString()}</div>` +
       `<div class="btn-row"><button class="btn btn-success" onclick="completeDelivery('${o.id}')">渡した → 完了</button></div>`;
@@ -629,107 +980,374 @@ function renderWaitingList() {
   });
 }
 async function completeDelivery(id) {
-  await remove(ref(db, `waitOrders/${id}`));
+  await remove(ref(db, `waitOrders/${currentShopId}/${id}`));
 }
 window.completeDelivery = completeDelivery;
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  バッジ更新
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 function updateBadges() {
-  const pc = Object.keys(payOrders).length;
-  const wc = Object.keys(waitOrders).length;
+  const pc = Object.keys(payOrders[currentShopId] || {}).length;
+  const wc = Object.keys(waitOrders[currentShopId] || {}).length;
   const pb = document.getElementById('payBadge');
   const wb = document.getElementById('waitBadge');
   pb.style.display = pc ? 'flex' : 'none'; pb.textContent = pc;
   wb.style.display = wc ? 'flex' : 'none'; wb.textContent = wc;
 }
 
-// ═══════════════════════════════════════════
-//  集計タブ
-// ═══════════════════════════════════════════
-function renderAdmin() {
-  if (!adminUnlocked) {
-    document.getElementById('adminLock').style.display    = 'block';
-    document.getElementById('adminContent').style.display = 'none';
-    return;
-  }
-  document.getElementById('adminLock').style.display    = 'none';
-  document.getElementById('adminContent').style.display = 'block';
-  document.getElementById('statTotal').textContent = '¥' + (stats.total || 0).toLocaleString();
-  document.getElementById('statCount').textContent = (stats.count || 0) + '件';
-  const ms = document.getElementById('menuStats'); ms.innerHTML = '';
-  const bm = stats.byMenu || {};
-  if (!Object.keys(bm).length) {
-    ms.innerHTML = '<div style="color:#8e8e93;font-size:13px">まだ売上がありません</div>';
+// ══════════════════════════════════════════
+//  集計タブ（管理者）
+// ══════════════════════════════════════════
+function checkStatsPassword() {
+  if (document.getElementById('statsPwInput').value === ADMIN_PW) {
+    adminUnlocked = true;
+    document.getElementById('statsPwInput').value = '';
+    document.getElementById('statsPwError').style.display = 'none';
+    document.getElementById('statsLock').style.display = 'none';
+    document.getElementById('statsContent').style.display = 'block';
+    renderStats();
   } else {
-    Object.values(bm).forEach(d => {
+    document.getElementById('statsPwError').style.display = 'block';
+  }
+}
+window.checkStatsPassword = checkStatsPassword;
+function lockStats() {
+  adminUnlocked = false;
+  document.getElementById('statsLock').style.display = 'block';
+  document.getElementById('statsContent').style.display = 'none';
+}
+window.lockStats = lockStats;
+
+function renderStats() {
+  if (!adminUnlocked) return;
+  // 全体集計
+  let gTotal = 0, gCash = 0, gPaypay = 0, gCount = 0;
+  const gByMenu = {};
+  Object.values(allStats).forEach(s => {
+    gTotal  += s.total  || 0;
+    gCash   += s.cash   || 0;
+    gPaypay += s.paypay || 0;
+    gCount  += s.count  || 0;
+    Object.entries(s.byMenu || {}).forEach(([mid, d]) => {
+      if (!gByMenu[mid]) gByMenu[mid] = {name: d.name, qty: 0, total: 0};
+      gByMenu[mid].qty   += d.qty;
+      gByMenu[mid].total += d.total;
+    });
+  });
+  document.getElementById('globalStatsGrid').innerHTML =
+    `<div class="stat-card highlight"><div class="s-lbl">総売上</div><div class="s-val">¥${gTotal.toLocaleString()}</div></div>` +
+    `<div class="stat-card"><div class="s-lbl">現金</div><div class="s-val">¥${gCash.toLocaleString()}</div></div>` +
+    `<div class="stat-card"><div class="s-lbl">PayPay</div><div class="s-val">¥${gPaypay.toLocaleString()}</div></div>`;
+  const gms = document.getElementById('globalMenuStats');
+  gms.innerHTML = '';
+  if (!Object.keys(gByMenu).length) {
+    gms.innerHTML = '<div style="color:#8e8e93;font-size:13px">まだ売上がありません</div>';
+  } else {
+    Object.values(gByMenu).sort((a,b)=>b.total-a.total).forEach(d => {
       const r = document.createElement('div'); r.className = 'row';
       r.innerHTML = `<span>${d.name}</span><span>${d.qty}個 / ¥${d.total.toLocaleString()}</span>`;
-      ms.appendChild(r);
+      gms.appendChild(r);
     });
   }
-  const ss = document.getElementById('stockStatus'); ss.innerHTML = '';
-  Object.entries(menus).forEach(([id, m]) => {
-    const rem = getStock(id); const sc = stockClass(id);
-    const rt = rem === null ? '∞'
-      : (sc === 'out'  ? '<span style="color:#e24b4a;font-weight:600">売り切れ</span>'
-      : (sc === 'warn' ? `<span style="color:#BA7517;font-weight:600">残り${rem}</span>`
-      : `残り${rem}`));
-    const r = document.createElement('div'); r.className = 'row';
-    r.innerHTML = `<span>${m.name}</span><span>${rt}</span>`;
-    ss.appendChild(r);
+  // 店舗別
+  const area = document.getElementById('shopStatsArea'); area.innerHTML = '';
+  Object.entries(shops).forEach(([sid, shop]) => {
+    const s = allStats[sid] || {total:0, cash:0, paypay:0, count:0};
+    const cashInReg = (shop.cashRegister || 0) + (s.cash || 0);
+    const card = document.createElement('div'); card.className = 'admin-shop-card';
+    let menuRows = '';
+    Object.values(s.byMenu || {}).sort((a,b)=>b.total-a.total).forEach(d => {
+      menuRows += `<div class="row"><span>${d.name}</span><span>${d.qty}個 / ¥${d.total.toLocaleString()}</span></div>`;
+    });
+    card.innerHTML =
+      `<h4>🏪 ${shop.name}</h4>` +
+      `<div class="stats-grid">` +
+        `<div class="stat-card"><div class="s-lbl">売上合計</div><div class="s-val">¥${(s.total||0).toLocaleString()}</div></div>` +
+        `<div class="stat-card"><div class="s-lbl">件数</div><div class="s-val">${s.count||0}件</div></div>` +
+        `<div class="stat-card"><div class="s-lbl">現金売上</div><div class="s-val">¥${(s.cash||0).toLocaleString()}</div></div>` +
+        `<div class="stat-card"><div class="s-lbl">PayPay売上</div><div class="s-val">¥${(s.paypay||0).toLocaleString()}</div></div>` +
+      `</div>` +
+      `<div class="register-display">` +
+        `<div class="r-lbl">レジ内現金（準備金 ¥${(shop.cashRegister||0).toLocaleString()} ＋ 現金売上）</div>` +
+        `<div class="r-val">¥${cashInReg.toLocaleString()}</div>` +
+      `</div>` +
+      (menuRows ? `<div style="margin-top:10px;font-size:12px;font-weight:600;color:#8e8e93;margin-bottom:4px">メニュー別</div><div class="card-area" style="margin-bottom:0">${menuRows}</div>` : '');
+    area.appendChild(card);
   });
 }
 
-function checkPassword() {
-  if (document.getElementById('pwInput').value === adminPw) {
-    adminUnlocked = true;
-    document.getElementById('pwInput').value = '';
-    document.getElementById('pwError').style.display = 'none';
-    renderAdmin();
+async function resetAllStats() {
+  if (!confirm('全店舗の注文・集計・在庫使用数をリセットしますか？\nメニュー・店舗設定は保持されます。\nこの操作は取り消せません。')) return;
+  await set(ref(db, 'payOrders'),  {});
+  await set(ref(db, 'waitOrders'), {});
+  await set(ref(db, 'stats'),      {});
+  await set(ref(db, 'stockUsed'),  {});
+  alert('全店舗のリセットが完了しました');
+}
+window.resetAllStats = resetAllStats;
+
+function showShopResetModal() {
+  const el = document.getElementById('shopResetList');
+  el.innerHTML = '';
+  const shopEntries = Object.entries(shops);
+  if (!shopEntries.length) {
+    el.innerHTML = '<div style="color:#8e8e93;font-size:13px">店舗が登録されていません</div>';
   } else {
-    document.getElementById('pwError').style.display = 'block';
+    shopEntries.forEach(([id, shop]) => {
+      const s  = allStats[id] || {};
+      const pc = Object.keys(payOrders[id]  || {}).length;
+      const wc = Object.keys(waitOrders[id] || {}).length;
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#f2f2f7;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center';
+      const info = document.createElement('div');
+      info.innerHTML =
+        '<div style="font-size:14px;font-weight:600">' + shop.name + '</div>' +
+        '<div style="font-size:11px;color:#8e8e93;margin-top:2px">' +
+          '売上 ¥' + (s.total||0).toLocaleString() +
+          ' / 会計待ち' + pc + '件 / 受け渡し待ち' + wc + '件' +
+        '</div>';
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-danger btn-sm';
+      btn.textContent = 'リセット';
+      btn.dataset.shopId   = id;
+      btn.dataset.shopName = shop.name;
+      btn.addEventListener('click', function() {
+        resetShopStats(this.dataset.shopId, this.dataset.shopName);
+      });
+      card.appendChild(info);
+      card.appendChild(btn);
+      el.appendChild(card);
+    });
+  }
+  document.getElementById('shopResetModal').classList.add('open');
+}
+window.showShopResetModal = showShopResetModal;
+
+async function resetShopStats(shopId, shopName) {
+  if (!confirm('「' + shopName + '」の注文・集計・在庫使用数をリセットしますか？\nこの操作は取り消せません。')) return;
+  await remove(ref(db, 'payOrders/'  + shopId));
+  await remove(ref(db, 'waitOrders/' + shopId));
+  await remove(ref(db, 'stats/'      + shopId));
+  // 在庫使用数は全体で管理のため全リセット（店舗別在庫はなし）
+  await set(ref(db, 'stockUsed'), {});
+  closeModal('shopResetModal');
+  alert('「' + shopName + '」のリセットが完了しました');
+}
+window.resetShopStats = resetShopStats;
+
+// ══════════════════════════════════════════
+//  Excel出力
+// ══════════════════════════════════════════
+async function exportExcel() {
+  // SheetJS（CDN）を動的ロード
+  if (!window.XLSX) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  const wb = window.XLSX.utils.book_new();
+  // ── シート1：全体サマリー ──
+  let gTotal=0, gCash=0, gPaypay=0, gCount=0;
+  const summaryRows = [
+    ['飲食イベント 売上明細'],
+    ['出力日時', new Date().toLocaleString('ja-JP')],
+    [],
+    ['【全体集計】'],
+    ['', '売上合計', '現金', 'PayPay', '件数'],
+  ];
+  const shopSummary = [];
+  Object.entries(shops).forEach(([sid, shop]) => {
+    const s = allStats[sid] || {total:0, cash:0, paypay:0, count:0};
+    gTotal  += s.total  || 0;
+    gCash   += s.cash   || 0;
+    gPaypay += s.paypay || 0;
+    gCount  += s.count  || 0;
+    shopSummary.push([shop.name, s.total||0, s.cash||0, s.paypay||0, s.count||0]);
+  });
+  summaryRows.push(['合計', gTotal, gCash, gPaypay, gCount]);
+  summaryRows.push([]);
+  summaryRows.push(['【店舗別集計】']);
+  summaryRows.push(['店舗名', '売上合計', '現金', 'PayPay', '件数', 'レジ準備金', 'レジ内現金']);
+  shopSummary.forEach(r => {
+    const sid = Object.keys(shops).find(id => shops[id].name === r[0]);
+    const prep = (shops[sid] && shops[sid].cashRegister) || 0;
+    summaryRows.push([...r, prep, prep + r[2]]);
+  });
+  summaryRows.push([]);
+  summaryRows.push(['【メニュー別集計（全体）】']);
+  summaryRows.push(['メニュー名', '販売数', '売上金額']);
+  const gByMenu = {};
+  Object.values(allStats).forEach(s => {
+    Object.entries(s.byMenu || {}).forEach(([mid, d]) => {
+      if (!gByMenu[mid]) gByMenu[mid] = {name: d.name, qty: 0, total: 0};
+      gByMenu[mid].qty   += d.qty;
+      gByMenu[mid].total += d.total;
+    });
+  });
+  Object.values(gByMenu).sort((a,b)=>b.total-a.total).forEach(d => {
+    summaryRows.push([d.name, d.qty, d.total]);
+  });
+  const ws1 = window.XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1['!cols'] = [{wch:20},{wch:12},{wch:12},{wch:12},{wch:8},{wch:12},{wch:12}];
+  window.XLSX.utils.book_append_sheet(wb, ws1, '全体サマリー');
+
+  // ── シート2以降：店舗別明細 ──
+  Object.entries(shops).forEach(([sid, shop]) => {
+    const s = allStats[sid] || {};
+    const rows = [
+      [`【${shop.name}】売上明細`],
+      ['売上合計', (s.total||0)],
+      ['現金売上', (s.cash||0)],
+      ['PayPay売上', (s.paypay||0)],
+      ['件数', (s.count||0)],
+      ['レジ準備金', (shop.cashRegister||0)],
+      ['レジ内現金', (shop.cashRegister||0)+(s.cash||0)],
+      [],
+      ['メニュー名', '販売数', '売上金額'],
+    ];
+    Object.values(s.byMenu || {}).sort((a,b)=>b.total-a.total).forEach(d => {
+      rows.push([d.name, d.qty, d.total]);
+    });
+    const ws = window.XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:20},{wch:12},{wch:12}];
+    const sheetName = shop.name.slice(0, 31); // Excel シート名31文字制限
+    window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  const filename = `売上明細_${new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')}.xlsx`;
+  window.XLSX.writeFile(wb, filename);
+}
+window.exportExcel = exportExcel;
+
+// ══════════════════════════════════════════
+//  設定タブ
+// ══════════════════════════════════════════
+function checkSettingsPassword() {
+  if (document.getElementById('settingsPwInput').value === ADMIN_PW) {
+    settingsUnlocked = true;
+    document.getElementById('settingsPwInput').value = '';
+    document.getElementById('settingsPwError').style.display = 'none';
+    document.getElementById('settingsAdminLock').style.display = 'none';
+    document.getElementById('settingsAdminContent').style.display = 'block';
+    renderShopManage();
+    renderMenuManage();
+  } else {
+    document.getElementById('settingsPwError').style.display = 'block';
   }
 }
-window.checkPassword = checkPassword;
-
-function lockAdmin() { adminUnlocked = false; renderAdmin(); }
-window.lockAdmin = lockAdmin;
-
-async function resetStats() {
-  if (!confirm('集計データをリセットしますか？')) return;
-  await set(ref(db, 'stats'), {total:0, count:0, byMenu:{}});
+window.checkSettingsPassword = checkSettingsPassword;
+function lockSettingsAdmin() {
+  settingsUnlocked = false;
+  document.getElementById('settingsAdminLock').style.display = 'block';
+  document.getElementById('settingsAdminContent').style.display = 'none';
 }
-window.resetStats = resetStats;
+window.lockSettingsAdmin = lockSettingsAdmin;
 
+// 店舗管理
+function renderShopManage() {
+  const el = document.getElementById('shopManageList'); el.innerHTML = '';
+  if (!Object.keys(shops).length) {
+    el.innerHTML = '<div style="color:#8e8e93;font-size:13px">店舗がまだ登録されていません</div>';
+    return;
+  }
+  Object.entries(shops).forEach(([id, shop]) => {
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML =
+      `<div><div style="font-size:13px;font-weight:600">${shop.name}</div>` +
+      `<div style="font-size:11px;color:#8e8e93">準備金 ¥${(shop.cashRegister||0).toLocaleString()} / メニュー${(shop.menuIds||[]).length}件</div></div>` +
+      `<div style="display:flex;gap:6px">` +
+        `<button class="btn btn-secondary btn-sm" onclick="showEditShop('${id}')">編集</button>` +
+        `<button class="btn btn-danger btn-sm" onclick="deleteShop('${id}')">削除</button>` +
+      `</div>`;
+    el.appendChild(r);
+  });
+}
 
+function showAddShop() {
+  document.getElementById('addShopTitle').textContent = '店舗を追加';
+  document.getElementById('newShopName').value = '';
+  document.getElementById('newShopCash').value = '';
+  document.getElementById('editShopId').value = '';
+  renderShopMenuChecks([]);
+  document.getElementById('addShopModal').classList.add('open');
+}
+window.showAddShop = showAddShop;
 
-// ═══════════════════════════════════════════
-//  設定タブ
-// ═══════════════════════════════════════════
-function renderSettings() {
-  // メニュー管理
+function showEditShop(id) {
+  const shop = shops[id]; if (!shop) return;
+  document.getElementById('addShopTitle').textContent = '店舗を編集';
+  document.getElementById('newShopName').value = shop.name;
+  document.getElementById('newShopCash').value = shop.cashRegister || '';
+  document.getElementById('editShopId').value = id;
+  renderShopMenuChecks(shop.menuIds || []);
+  document.getElementById('addShopModal').classList.add('open');
+}
+window.showEditShop = showEditShop;
+
+function renderShopMenuChecks(selectedIds) {
+  const el = document.getElementById('shopMenuChecks'); el.innerHTML = '';
+  Object.entries(menus).forEach(([mid, m]) => {
+    const checked = selectedIds.includes(mid);
+    const item = document.createElement('div'); item.className = 'menu-check-item';
+    item.innerHTML =
+      `<input type="checkbox" id="mc_${mid}" value="${mid}" ${checked ? 'checked' : ''}>` +
+      `<label for="mc_${mid}">${m.name}（¥${m.price.toLocaleString()}）</label>`;
+    el.appendChild(item);
+  });
+}
+
+async function saveShop() {
+  const name = document.getElementById('newShopName').value.trim();
+  const cash = parseInt(document.getElementById('newShopCash').value) || 0;
+  const eid  = document.getElementById('editShopId').value;
+  if (!name) { alert('店舗名を入力してください'); return; }
+  const menuIds = [...document.querySelectorAll('#shopMenuChecks input:checked')].map(c => c.value);
+  const data = {name, cashRegister: cash, menuIds};
+  if (eid) {
+    await update(ref(db, `shops/${eid}`), data);
+  } else {
+    await push(ref(db, 'shops'), data);
+  }
+  closeModal('addShopModal');
+}
+window.saveShop = saveShop;
+
+async function deleteShop(id) {
+  if (!confirm('この店舗を削除しますか？')) return;
+  await remove(ref(db, `shops/${id}`));
+  await remove(ref(db, `stats/${id}`));
+}
+window.deleteShop = deleteShop;
+
+// メニュー管理
+function renderMenuManage() {
   const ml = document.getElementById('menuList'); ml.innerHTML = '';
   Object.entries(menus).forEach(([id, m]) => {
     const c = COLORS[m.colorIdx ?? 6];
     const st = m.stock != null ? `在庫:${m.stock}` : '在庫:∞';
     const r = document.createElement('div');
-    r.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #d1d1d6">
-      <div style="width:10px;height:10px;border-radius:2px;background:${c.bg};border:0.5px solid rgba(0,0,0,0.1);flex-shrink:0"></div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name}</div>
-        <div style="font-size:11px;color:#8e8e93">${CAT_LBL[m.cat]||''} · ¥${m.price.toLocaleString()} · ${st}</div>
-      </div>
-      <div style="display:flex;gap:5px;flex-shrink:0">
-        <button class="btn btn-secondary btn-sm" onclick="showAddMenu('${id}')">編集</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteMenu('${id}')">削除</button>
-      </div>
-    </div>`;
+    r.innerHTML =
+      `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #d1d1d6">` +
+        `<div style="width:10px;height:10px;border-radius:2px;background:${c.bg};flex-shrink:0"></div>` +
+        `<div style="flex:1;min-width:0">` +
+          `<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name}</div>` +
+          `<div style="font-size:11px;color:#8e8e93">${CAT_LBL[m.cat]||''} · ¥${m.price.toLocaleString()} · ${st}</div>` +
+        `</div>` +
+        `<div style="display:flex;gap:5px;flex-shrink:0">` +
+          `<button class="btn btn-secondary btn-sm" onclick="showAddMenu('${id}')">編集</button>` +
+          `<button class="btn btn-danger btn-sm" onclick="deleteMenu('${id}')">削除</button>` +
+        `</div>` +
+      `</div>`;
     ml.appendChild(r);
   });
+}
 
-  // 並び替え・非表示（ローカル）
+// 設定タブ：端末ローカル部分
+function renderSettingsLocal() {
   const ss = document.getElementById('sortSettings'); ss.innerHTML = '';
   orderedMenus().forEach((m, i, arr) => {
     const ih = localHidden.includes(m.id);
@@ -738,60 +1356,48 @@ function renderSettings() {
       `<div class="sort-bar-thin" style="background:${CAT_BAR[m.cat]||'#888'}"></div>` +
       `<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${m.name}</span>` +
       `<button class="btn ${ih?'btn-primary':'btn-secondary'} btn-sm" style="font-size:10px;padding:4px 7px;flex-shrink:0" onclick="toggleHidden('${m.id}')">${ih?'表示':'非表示'}</button>` +
-      `<div class="sort-arrows">
-        <button onclick="moveUp(${i})" ${i===0?'disabled':''}>▲</button>
-        <button onclick="moveDown(${i})" ${i===arr.length-1?'disabled':''}>▼</button>
-      </div>`;
+      `<div class="sort-arrows">` +
+        `<button onclick="moveUp(${i})" ${i===0?'disabled':''}>▲</button>` +
+        `<button onclick="moveDown(${i})" ${i===arr.length-1?'disabled':''}>▼</button>` +
+      `</div>`;
     ss.appendChild(item);
   });
-
-  // 形状
   const se = document.getElementById('shapeSelector'); se.innerHTML = '';
   [{id:'rect',label:'角丸'},{id:'pill',label:'ピル'},{id:'square',label:'スクエア'}].forEach(sh => {
     const d = document.createElement('div');
     d.className = `shape-preview shape-${sh.id}${currentShape === sh.id ? ' selected' : ''}`;
     d.textContent = sh.label;
-    d.onclick = () => { currentShape = sh.id; saveLocal(); renderMenuGrid(); renderSettings(); };
+    d.onclick = () => { currentShape = sh.id; saveLocal(); renderMenuGrid(); renderSettingsLocal(); };
     se.appendChild(d);
   });
-
-  document.getElementById('terminalName').value = terminalName;
 }
-
 function moveUp(i) {
-  if (i <= 0) return;
-  [localOrder[i-1], localOrder[i]] = [localOrder[i], localOrder[i-1]];
-  saveLocal(); renderMenuGrid(); renderSettings();
+  if (i<=0) return;
+  [localOrder[i-1],localOrder[i]]=[localOrder[i],localOrder[i-1]];
+  saveLocal(); renderMenuGrid(); renderSettingsLocal();
 }
 function moveDown(i) {
-  if (i >= localOrder.length - 1) return;
-  [localOrder[i], localOrder[i+1]] = [localOrder[i+1], localOrder[i]];
-  saveLocal(); renderMenuGrid(); renderSettings();
+  if (i>=localOrder.length-1) return;
+  [localOrder[i],localOrder[i+1]]=[localOrder[i+1],localOrder[i]];
+  saveLocal(); renderMenuGrid(); renderSettingsLocal();
 }
 function toggleHidden(id) {
   const idx = localHidden.indexOf(id);
-  if (idx > -1) localHidden.splice(idx, 1); else localHidden.push(id);
-  saveLocal(); renderSettings(); renderMenuGrid();
+  if (idx>-1) localHidden.splice(idx,1); else localHidden.push(id);
+  saveLocal(); renderSettingsLocal(); renderMenuGrid();
 }
 window.moveUp = moveUp; window.moveDown = moveDown; window.toggleHidden = toggleHidden;
 
-function saveTerminalName() {
-  terminalName = document.getElementById('terminalName').value.trim() || '端末A';
-  localStorage.setItem('terminalName', terminalName);
-  alert('保存しました');
-}
-window.saveTerminalName = saveTerminalName;
-
-// ─ メニュー追加・編集 ─
+// ── メニュー追加・編集 ──
 function showAddMenu(id) {
   const m = id ? menus[id] : null;
   document.getElementById('addMenuTitle').textContent = m ? 'メニューを編集' : 'メニューを追加';
   document.getElementById('newMenuName').value  = m ? m.name  : '';
   document.getElementById('newMenuPrice').value = m ? m.price : '';
-  document.getElementById('newMenuCat').value   = m ? (m.cat || 'drink') : 'drink';
-  document.getElementById('newMenuStock').value = m && m.stock != null ? m.stock : '';
+  document.getElementById('newMenuCat').value   = m ? (m.cat||'drink') : 'drink';
+  document.getElementById('newMenuStock').value = m && m.stock!=null ? m.stock : '';
   document.getElementById('editMenuId').value   = id || '';
-  const si = m && m.colorIdx != null ? m.colorIdx : 0;
+  const si = m && m.colorIdx!=null ? m.colorIdx : 0;
   document.getElementById('selectedColor').value = si;
   renderColorSwatches(si); updatePreview();
   document.getElementById('addMenuModal').classList.add('open');
@@ -800,32 +1406,31 @@ window.showAddMenu = showAddMenu;
 
 function renderColorSwatches(si) {
   const cs = document.getElementById('colorSwatches'); cs.innerHTML = '';
-  COLORS.forEach((c, i) => {
+  COLORS.forEach((c,i) => {
     const d = document.createElement('div');
-    d.className = 'color-swatch' + (i === si ? ' selected' : '');
-    d.style.background = c.bg; d.title = c.label;
-    d.onclick = () => { document.getElementById('selectedColor').value = i; renderColorSwatches(i); updatePreview(); };
+    d.className = 'color-swatch' + (i===si?' selected':'');
+    d.style.background = c.bg;
+    d.onclick = () => { document.getElementById('selectedColor').value=i; renderColorSwatches(i); updatePreview(); };
     cs.appendChild(d);
   });
 }
 function updatePreview() {
-  const name     = document.getElementById('newMenuName').value  || 'メニュー名';
-  const price    = parseInt(document.getElementById('newMenuPrice').value) || 0;
-  const cat      = document.getElementById('newMenuCat').value;
-  const sv       = document.getElementById('newMenuStock').value;
-  const ci       = parseInt(document.getElementById('selectedColor').value) || 0;
+  const name  = document.getElementById('newMenuName').value  || 'メニュー名';
+  const price = parseInt(document.getElementById('newMenuPrice').value)||0;
+  const cat   = document.getElementById('newMenuCat').value;
+  const sv    = document.getElementById('newMenuStock').value;
+  const ci    = parseInt(document.getElementById('selectedColor').value)||0;
   const c = COLORS[ci];
   const p = document.getElementById('btnPreview');
-  p.style.background = c.bg; p.style.color = c.text;
-  p.className = `menu-btn shape-${currentShape}`;
-  document.getElementById('previewBar').style.background   = CAT_BAR[cat] || '#888';
-  document.getElementById('previewName').textContent        = name;
-  document.getElementById('previewPrice').textContent       = '¥' + price.toLocaleString();
+  p.style.background=c.bg; p.style.color=c.text; p.className=`menu-btn shape-${currentShape}`;
+  document.getElementById('previewBar').style.background = CAT_BAR[cat]||'#888';
+  document.getElementById('previewName').textContent = name;
+  document.getElementById('previewPrice').textContent = '¥'+price.toLocaleString();
   const ps = document.getElementById('previewStock');
-  if (sv !== '' && parseInt(sv) >= 0) { ps.style.display = 'inline-block'; ps.textContent = '残' + sv; ps.className = 'stock-label stock-ok'; }
-  else ps.style.display = 'none';
+  if (sv!==''&&parseInt(sv)>=0){ps.style.display='inline-block';ps.textContent='残'+sv;ps.className='stock-label stock-ok';}
+  else ps.style.display='none';
 }
-['newMenuName','newMenuPrice','newMenuCat','newMenuStock'].forEach(id => {
+['newMenuName','newMenuPrice','newMenuCat','newMenuStock'].forEach(id=>{
   document.getElementById(id).addEventListener('input', updatePreview);
 });
 
@@ -834,40 +1439,34 @@ async function saveMenu() {
   const price = parseInt(document.getElementById('newMenuPrice').value);
   const cat   = document.getElementById('newMenuCat').value;
   const sr    = document.getElementById('newMenuStock').value;
-  const stock = sr === '' ? null : parseInt(sr);
-  const ci    = parseInt(document.getElementById('selectedColor').value) || 0;
+  const stock = sr==='' ? null : parseInt(sr);
+  const ci    = parseInt(document.getElementById('selectedColor').value)||0;
   const eid   = document.getElementById('editMenuId').value;
-  if (!name || isNaN(price) || price < 0) { alert('名前と価格を正しく入力してください'); return; }
-  const data = {name, price, cat, colorIdx: ci, stock: stock ?? null};
-  if (eid) {
-    await update(ref(db, `menus/${eid}`), data);
-  } else {
-    const newRef = push(ref(db, 'menus'));
-    await set(newRef, data);
-  }
+  if (!name||isNaN(price)||price<0){alert('名前と価格を正しく入力してください');return;}
+  const data  = {name, price, cat, colorIdx:ci, stock:stock??null};
+  if (eid) { await update(ref(db,`menus/${eid}`),data); }
+  else     { await push(ref(db,'menus'),data); }
   closeModal('addMenuModal');
 }
 window.saveMenu = saveMenu;
 
 async function deleteMenu(id) {
   if (!confirm('このメニューを削除しますか？')) return;
-  await remove(ref(db, `menus/${id}`));
+  await remove(ref(db,`menus/${id}`));
   delete cart[id];
-  localOrder = localOrder.filter(x => x !== id);
-  localHidden = localHidden.filter(x => x !== id);
+  localOrder  = localOrder.filter(x=>x!==id);
+  localHidden = localHidden.filter(x=>x!==id);
   saveLocal(); renderCart();
 }
 window.deleteMenu = deleteMenu;
 
-// ─ モーダル ─
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 window.closeModal = closeModal;
 
-// ═══════════════════════════════════════════
-//  初期化
-// ═══════════════════════════════════════════
-syncLocalOrder();
-renderMenuGrid();
+// ══════════════════════════════════════════
+//  起動
+// ══════════════════════════════════════════
+init();
 </script>
 </body>
 </html>
