@@ -1291,11 +1291,27 @@ window.showEditShop = showEditShop;
 function renderShopMenuChecks(selectedIds) {
   const el = document.getElementById('shopMenuChecks'); el.innerHTML = '';
   Object.entries(menus).forEach(([mid, m]) => {
-    const checked = selectedIds.includes(mid);
-    const item = document.createElement('div'); item.className = 'menu-check-item';
-    item.innerHTML =
-      `<input type="checkbox" id="mc_${mid}" value="${mid}" ${checked ? 'checked' : ''}>` +
-      `<label for="mc_${mid}">${m.name}（¥${m.price.toLocaleString()}）</label>`;
+    const item = document.createElement('div');
+    item.className = 'menu-check-item';
+    item.style.cursor = 'pointer';
+
+    const cb = document.createElement('input');
+    cb.type    = 'checkbox';
+    cb.value   = mid;
+    cb.checked = selectedIds.includes(mid);
+    cb.style.cssText = 'width:20px;height:20px;cursor:pointer;flex-shrink:0;accent-color:#1a1a2e';
+
+    const lbl = document.createElement('span');
+    lbl.textContent = m.name + '（¥' + m.price.toLocaleString() + '）';
+    lbl.style.cssText = 'font-size:13px;flex:1;user-select:none';
+
+    // 行全体をタップしてもON/OFFできるようにする
+    item.addEventListener('click', function(e) {
+      if (e.target !== cb) cb.checked = !cb.checked;
+    });
+
+    item.appendChild(cb);
+    item.appendChild(lbl);
     el.appendChild(item);
   });
 }
