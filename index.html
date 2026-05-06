@@ -556,11 +556,16 @@ onValue(ref(db, '.info/connected'), snap => {
 onValue(ref(db,'shops'), snap => {
   shops = snap.val() || {};
   renderShopSelectScreen();
+  if (currentShopId && document.getElementById('mainApp').style.display !== 'none') {
+    applyShopMenuFilter(); // 店舗のmenuIdsが更新されたら表示を再計算
+    renderMenuGrid();
+  }
   if (document.getElementById('settingsAdminContent').style.display !== 'none') renderShopManage();
   if (adminUnlocked) renderStats();
 });
 onValue(ref(db,'menus'), snap => {
   menus = snap.val() || {};
+  if (currentShopId) applyShopMenuFilter(); // 店舗設定に基づき表示フィルターを再計算
   syncLocalOrder();
   renderMenuGrid();
   if (document.getElementById('tab-settings').classList.contains('active')) renderSettingsLocal();
@@ -663,20 +668,26 @@ function showMainApp(shopName) {
   document.getElementById('mainApp').style.display = 'flex';
   document.getElementById('mainApp').style.flexDirection = 'column';
   document.getElementById('shopBadge').textContent = '🏪 ' + name;
-  // 店舗のデフォルトメニュー表示を反映（初回のみ）
-  const shop = shops[currentShopId];
-  if (shop && shop.menuIds && !localStorage.getItem('localHidden_' + currentShopId)) {
-    const allMenuIds = Object.keys(menus);
-    localHidden = allMenuIds.filter(id => !shop.menuIds.includes(id));
-    localStorage.setItem('localHidden_' + currentShopId, JSON.stringify(localHidden));
-    localStorage.setItem('localHidden', JSON.stringify(localHidden));
-  } else {
-    const saved = localStorage.getItem('localHidden_' + currentShopId);
-    if (saved) localHidden = JSON.parse(saved);
-  }
+  applyShopMenuFilter();
   syncLocalOrder();
   renderMenuGrid();
   updateBadges();
+}
+
+// 店舗のmenuIdsを元にlocalHiddenを再計算する
+// menus未ロード時はonValue購読後に再度呼ばれるため問題なし
+function applyShopMenuFilter() {
+  const shop = shops[currentShopId];
+  if (!shop) return;
+  const allMenuIds = Object.keys(menus);
+  if (!allMenuIds.length) return; // menusがまだ未ロードなら何もしない
+  const shopMenuIds = shop.menuIds || [];
+  // 端末ごとの手動非表示をlocalStorageから取得
+  const manualHiddenKey = 'manualHidden_' + currentShopId;
+  const manualHidden = JSON.parse(localStorage.getItem(manualHiddenKey) || '[]');
+  // 店舗未設定メニュー + 手動非表示 を合わせてlocalHiddenとする
+  const shopHidden = allMenuIds.filter(id => !shopMenuIds.includes(id));
+  localHidden = [...new Set([...shopHidden, ...manualHidden])];
 }
 
 // ══════════════════════════════════════════
@@ -684,8 +695,6 @@ function showMainApp(shopName) {
 // ══════════════════════════════════════════
 function saveLocal() {
   localStorage.setItem('localOrder', JSON.stringify(localOrder));
-  localStorage.setItem('localHidden', JSON.stringify(localHidden));
-  if (currentShopId) localStorage.setItem('localHidden_' + currentShopId, JSON.stringify(localHidden));
   localStorage.setItem('btnShape', currentShape);
 }
 function syncLocalOrder() {
@@ -1406,8 +1415,18 @@ function moveDown(i) {
   saveLocal(); renderMenuGrid(); renderSettingsLocal();
 }
 function toggleHidden(id) {
-  const idx = localHidden.indexOf(id);
-  if (idx>-1) localHidden.splice(idx,1); else localHidden.push(id);
+  // 手動非表示設定はmanualHiddenに保存（店舗設定とは分離）
+  if (!currentShopId) return;
+  const key = 'manualHidden_' + currentShopId;
+  const manualHidden = JSON.parse(localStorage.getItem(key) || '[]');
+  const shop = shops[currentShopId] || {};
+  const shopMenuIds = shop.menuIds || [];
+  // 店舗が非表示にしているメニューは手動操作不可
+  if (!shopMenuIds.includes(id)) return;
+  const idx = manualHidden.indexOf(id);
+  if (idx > -1) manualHidden.splice(idx, 1); else manualHidden.push(id);
+  localStorage.setItem(key, JSON.stringify(manualHidden));
+  applyShopMenuFilter();
   saveLocal(); renderSettingsLocal(); renderMenuGrid();
 }
 window.moveUp = moveUp; window.moveDown = moveDown; window.toggleHidden = toggleHidden;
