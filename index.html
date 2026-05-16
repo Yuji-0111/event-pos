@@ -476,7 +476,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, push, update, remove }
+import { getDatabase, ref, onValue, set, push, update, remove, runTransaction }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ══════════════════════════════════════════
@@ -833,9 +833,16 @@ async function completeOrder() {
     items.push({id: k, name: m.name, qty: cart[k], price: sub});
     stockUpdate[k] = (stockUsed[k] || 0) + cart[k];
   });
+  // 店舗ごとの自動採番（Firebase トランザクションで連番を取得）
+  const counterRef = ref(db, `shopCounters/${currentShopId}`);
+  let orderNo = 1;
+  await runTransaction(counterRef, (current) => {
+    orderNo = (current || 0) + 1;
+    return orderNo;
+  });
   const newRef = push(ref(db, `payOrders/${currentShopId}`));
   await set(newRef, {
-    id: newRef.key, shopId: currentShopId, ticket, items, total,
+    id: newRef.key, shopId: currentShopId, ticket, orderNo, items, total,
     time: new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}),
     createdAt: Date.now()
   });
@@ -856,7 +863,7 @@ function renderPaymentList() {
   if (!orders.length) { el.innerHTML = '<div class="empty-state">会計待ちはありません</div>'; return; }
   el.innerHTML = '';
   orders.forEach(o => {
-    const label = o.ticket != null ? `No.${o.ticket}` : '#' + String(o.id).slice(-4);
+    const label = o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`;
     const card = document.createElement('div'); card.className = 'order-card';
     card.innerHTML =
       `<div class="order-card-header"><span class="order-num">${label}</span><span class="order-time">${o.time}</span></div>` +
@@ -873,7 +880,7 @@ function openPaymentModal(id) {
   currentPayId    = id;
   currentPayTotal = o.total;
   // 明細
-  let detail = `<div style="font-size:13px;color:#8e8e93;margin-bottom:8px">${o.ticket != null ? `No.${o.ticket}` : '#'+String(o.id).slice(-4)}</div>`;
+  let detail = `<div style="font-size:13px;color:#8e8e93;margin-bottom:8px">${o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`}</div>`;
   o.items.forEach(i => { detail += `<div class="row"><span>${i.name} × ${i.qty}</span><span>¥${i.price.toLocaleString()}</span></div>`; });
   document.getElementById('paymentDetail').innerHTML = detail;
   document.getElementById('paymentTotalDisp').textContent = '¥' + o.total.toLocaleString();
@@ -979,7 +986,7 @@ function renderWaitingList() {
   if (!orders.length) { el.innerHTML = '<div class="empty-state">受け渡し待ちはありません</div>'; return; }
   el.innerHTML = '';
   orders.forEach(o => {
-    const label = o.ticket != null ? `No.${o.ticket}` : '#' + String(o.id).slice(-4);
+    const label = o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`;
     const payBadge = o.payMethod === 'cash'
       ? '<span class="pay-badge pay-cash">現金</span>'
       : '<span class="pay-badge pay-paypay">PayPay</span>';
@@ -1092,10 +1099,11 @@ function renderStats() {
 
 async function resetAllStats() {
   if (!confirm('全店舗の注文・集計・在庫使用数をリセットしますか？\nメニュー・店舗設定は保持されます。\nこの操作は取り消せません。')) return;
-  await set(ref(db, 'payOrders'),  {});
-  await set(ref(db, 'waitOrders'), {});
-  await set(ref(db, 'stats'),      {});
-  await set(ref(db, 'stockUsed'),  {});
+  await set(ref(db, 'payOrders'),    {});
+  await set(ref(db, 'waitOrders'),   {});
+  await set(ref(db, 'stats'),        {});
+  await set(ref(db, 'stockUsed'),    {});
+  await set(ref(db, 'shopCounters'), {});
   alert('全店舗のリセットが完了しました');
 }
 window.resetAllStats = resetAllStats;
@@ -1139,9 +1147,10 @@ window.showShopResetModal = showShopResetModal;
 
 async function resetShopStats(shopId, shopName) {
   if (!confirm('「' + shopName + '」の注文・集計・在庫使用数をリセットしますか？\nこの操作は取り消せません。')) return;
-  await remove(ref(db, 'payOrders/'  + shopId));
-  await remove(ref(db, 'waitOrders/' + shopId));
-  await remove(ref(db, 'stats/'      + shopId));
+  await remove(ref(db, 'payOrders/'      + shopId));
+  await remove(ref(db, 'waitOrders/'     + shopId));
+  await remove(ref(db, 'stats/'          + shopId));
+  await remove(ref(db, 'shopCounters/'   + shopId));
   // 在庫使用数は全体で管理のため全リセット（店舗別在庫はなし）
   await set(ref(db, 'stockUsed'), {});
   closeModal('shopResetModal');
