@@ -223,6 +223,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku
 
   <!-- 注文タブ -->
   <div id="tab-order" class="screen active">
+    <!-- 追加注文モードバナー -->
+    <div id="addOrderBanner" style="display:none;background:#1a1a2e;color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:10px;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;opacity:0.7;margin-bottom:2px">追加注文モード</div>
+        <div style="font-size:14px;font-weight:600" id="addOrderBannerLabel"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="cancelAddOrder()" style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">キャンセル</button>
+    </div>
     <div class="cat-legend-row" id="catLegend"></div>
     <div class="menu-grid" id="menuGrid"></div>
     <div id="cartArea" style="display:none">
@@ -512,12 +520,14 @@ const TAB_IDS = ['order','payment','waiting','stats','settings'];
 //  状態変数
 // ══════════════════════════════════════════
 // Firebase同期
-let shops     = {};   // {shopId: {name, cashRegister, menuIds:[]}}
-let menus     = {};   // {menuId: {name,price,cat,colorIdx,stock}}
-let stockUsed = {};   // {menuId: 使用数}
-let payOrders = {};   // {shopId: {orderId: order}}
-let waitOrders= {};   // {shopId: {orderId: order}}
-let allStats  = {};   // {shopId: {total,cash,paypay,count,byMenu{}}}
+let shops        = {};   // {shopId: {name, cashRegister, menuIds:[]}}
+let menus        = {};   // {menuId: {name,price,cat,colorIdx,stock}}
+let stockUsed    = {};   // {menuId: 使用数}
+let activeOrders = {};   // {shopId: {orderId: order}} ← 会計・受け渡し両方をここで管理
+let allStats     = {};   // {shopId: {total,cash,paypay,count,byMenu{}}}
+// 後方互換のため残す（参照箇所がある場合のフォールバック）
+let payOrders    = {};
+let waitOrders   = {};
 
 // 端末ローカル
 let currentShopId   = localStorage.getItem('currentShopId') || null;
@@ -527,6 +537,7 @@ let currentShape    = localStorage.getItem('btnShape') || 'rect';
 
 // UI状態
 let cart            = {};
+let addToOrderId    = null;  // 追加注文モード時の対象オーダーID（nullなら新規注文）
 let adminUnlocked   = false;   // 集計タブ
 let settingsUnlocked= false;   // 設定タブ管理者エリア
 let currentPayId    = null;
@@ -576,14 +587,10 @@ onValue(ref(db,'stockUsed'), snap => {
   renderMenuGrid();
   if (adminUnlocked) renderStats();
 });
-onValue(ref(db,'payOrders'), snap => {
-  payOrders = snap.val() || {};
+onValue(ref(db,'activeOrders'), snap => {
+  activeOrders = snap.val() || {};
   updateBadges();
   if (document.getElementById('tab-payment').classList.contains('active')) renderPaymentList();
-});
-onValue(ref(db,'waitOrders'), snap => {
-  waitOrders = snap.val() || {};
-  updateBadges();
   if (document.getElementById('tab-waiting').classList.contains('active')) renderWaitingList();
 });
 onValue(ref(db,'stats'), snap => {
@@ -810,81 +817,273 @@ function renderCart() {
     ci.appendChild(r);
   });
   document.getElementById('totalAmount').textContent = '¥' + total.toLocaleString();
+  // 追加注文モード時はボタンラベルを変更
+  const confirmBtn = document.querySelector('#tab-order .btn-primary');
+  if (confirmBtn) {
+    confirmBtn.textContent = addToOrderId ? '追加注文を確定する' : '注文確定 → 会計待ちへ';
+  }
 }
 
 async function completeOrder() {
   if (!currentShopId) { alert('店舗を選択してください'); return; }
   const keys = Object.keys(cart).filter(k => cart[k] > 0);
   if (!keys.length) return;
-  const ticketRaw = document.getElementById('ticketNum').value;
-  const ticket = ticketRaw ? parseInt(ticketRaw) : null;
-  // 番号札重複チェック（同店舗内）
-  const shopPay  = (payOrders[currentShopId]  && Object.values(payOrders[currentShopId]))  || [];
-  const shopWait = (waitOrders[currentShopId] && Object.values(waitOrders[currentShopId])) || [];
-  if (ticket !== null && [...shopPay, ...shopWait].find(o => o.ticket === ticket)) {
-    alert(`番号札 ${ticket} はすでに使用中です`); return;
-  }
-  let total = 0;
-  const items = [];
+
+  const timeStr = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
   const stockUpdate = {};
+  const newItems = [];
+  let addTotal = 0;
   keys.forEach(k => {
     const m = menus[k]; if (!m) return;
-    const sub = m.price * cart[k]; total += sub;
-    items.push({id: k, name: m.name, qty: cart[k], price: sub});
+    const sub = m.price * cart[k]; addTotal += sub;
+    newItems.push({id: k, name: m.name, qty: cart[k], price: sub});
     stockUpdate[k] = (stockUsed[k] || 0) + cart[k];
   });
-  // 店舗ごとの自動採番（Firebase トランザクションで連番を取得）
-  const counterRef = ref(db, `shopCounters/${currentShopId}`);
-  let orderNo = 1;
-  await runTransaction(counterRef, (current) => {
-    orderNo = (current || 0) + 1;
-    return orderNo;
-  });
-  const newRef = push(ref(db, `payOrders/${currentShopId}`));
-  await set(newRef, {
-    id: newRef.key, shopId: currentShopId, ticket, orderNo, items, total,
-    time: new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}),
-    createdAt: Date.now()
-  });
-  await update(ref(db, 'stockUsed'), stockUpdate);
-  cart = {};
-  document.getElementById('ticketNum').value = '';
-  renderMenuGrid(); renderCart(); switchTab('payment');
+
+  if (addToOrderId) {
+    // ── 追加注文モード：既存オーダーに注文履歴を追記 ──
+    const existing = (activeOrders[currentShopId] || {})[addToOrderId];
+    if (!existing) { alert('対象のオーダーが見つかりません'); return; }
+    // 既存roundsにdeliveredAtがない場合は後方互換で付与
+    const existingRounds = (existing.rounds || [
+      {roundNo: 1, items: existing.items, time: existing.time, deliveredAt: null}
+    ]).map(r => ({...r, deliveredAt: r.deliveredAt ?? null}));
+    const updatedRounds = [...existingRounds, {
+      roundNo: existingRounds.length + 1,
+      items: newItems,
+      time: timeStr,
+      deliveredAt: null
+    }];
+    const updatedTotal = existing.total + addTotal;
+    await update(ref(db, `activeOrders/${currentShopId}/${addToOrderId}`), {
+      rounds: updatedRounds,
+      total: updatedTotal
+    });
+    await update(ref(db, 'stockUsed'), stockUpdate);
+    addToOrderId = null;
+    cart = {};
+    document.getElementById('ticketNum').style.display = '';
+    document.getElementById('addOrderBanner').style.display = 'none';
+    renderMenuGrid(); renderCart(); switchTab('payment');
+  } else {
+    // ── 新規注文モード ──
+    const ticketRaw = document.getElementById('ticketNum').value;
+    const ticket = ticketRaw ? parseInt(ticketRaw) : null;
+    const shopPay  = (payOrders[currentShopId]  && Object.values(payOrders[currentShopId]))  || [];
+    const shopWait = (waitOrders[currentShopId] && Object.values(waitOrders[currentShopId])) || [];
+    if (ticket !== null && [...shopPay, ...shopWait].find(o => o.ticket === ticket)) {
+      alert(`番号札 ${ticket} はすでに使用中です`); return;
+    }
+    const counterRef = ref(db, `shopCounters/${currentShopId}`);
+    let orderNo = 1;
+    await runTransaction(counterRef, (current) => {
+      orderNo = (current || 0) + 1;
+      return orderNo;
+    });
+    const newRef = push(ref(db, `activeOrders/${currentShopId}`));
+    await set(newRef, {
+      id: newRef.key, shopId: currentShopId, ticket, orderNo,
+      rounds: [{roundNo: 1, items: newItems, time: timeStr, deliveredAt: null}],
+      items: newItems,
+      total: addTotal,
+      time: timeStr,
+      createdAt: Date.now(),
+      paidAt: null,
+      deliveredAt: null,
+      payMethod: null
+    });
+    await update(ref(db, 'stockUsed'), stockUpdate);
+    cart = {};
+    document.getElementById('ticketNum').value = '';
+    renderMenuGrid(); renderCart(); switchTab('payment');
+  }
 }
 window.completeOrder = completeOrder;
+
+// 追加注文モードを開始
+function startAddOrder(orderId) {
+  addToOrderId = orderId;
+  cart = {};
+  // 注文画面にバナーを表示
+  const o = (activeOrders[currentShopId] || {})[orderId];
+  const label = o ? `#${o.orderNo}` : '';
+  document.getElementById('addOrderBanner').style.display = 'flex';
+  document.getElementById('addOrderBannerLabel').textContent = label + ' に追加注文中';
+  document.getElementById('ticketNum').style.display = 'none';
+  renderMenuGrid(); renderCart(); switchTab('order');
+}
+window.startAddOrder = startAddOrder;
+
+// 追加注文モードをキャンセル
+function cancelAddOrder() {
+  addToOrderId = null;
+  cart = {};
+  document.getElementById('ticketNum').style.display = '';
+  document.getElementById('addOrderBanner').style.display = 'none';
+  renderMenuGrid(); renderCart();
+}
+window.cancelAddOrder = cancelAddOrder;
 
 // ══════════════════════════════════════════
 //  会計待ちタブ
 // ══════════════════════════════════════════
+function buildRoundsHtml(o, mode) {
+  const rounds = (o.rounds || [{roundNo: 1, items: o.items, time: o.time, deliveredAt: null}])
+    .map(r => ({...r, deliveredAt: r.deliveredAt ?? null}));
+  return rounds.map((r, idx) => {
+    const itemStr    = r.items.map(i => `${i.name}×${i.qty}`).join('、');
+    const roundTotal = r.items.reduce((s, i) => s + i.price, 0);
+    const isDelivered = !!r.deliveredAt;
+    let deliverBtn = '';
+    if (mode === 'waiting') {
+      deliverBtn = isDelivered
+        ? `<span style="font-size:10px;color:#16a34a;font-weight:600">受渡済 ✓</span>`
+        : `<button class="btn btn-success btn-sm" style="padding:4px 10px;font-size:10px" onclick="completeDelivery('${o.id}',${idx})">渡した</button>`;
+    }
+    const rowBg = (mode === 'waiting' && !isDelivered) ? 'background:#f0fdf4' : 'background:#fff';
+    return `<div style="margin-bottom:6px;padding:6px 8px;${rowBg};border-radius:6px;border:0.5px solid #e5e5ea">` +
+      `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">` +
+        `<span style="font-size:10px;font-weight:600;color:#8e8e93">${r.roundNo}回目 ${r.time}</span>` +
+        `<div style="display:flex;align-items:center;gap:6px">` +
+          `<span style="font-size:11px;color:#8e8e93">¥${roundTotal.toLocaleString()}</span>` +
+          deliverBtn +
+        `</div>` +
+      `</div>` +
+      `<div style="font-size:12px;color:#1a1a2e">${itemStr}</div></div>`;
+  }).join('');
+}
+
+function elapsedMin(createdAt) {
+  return Math.floor((Date.now() - createdAt) / 60000);
+}
+
+function allRoundsDelivered(o) {
+  const rounds = o.rounds || [{deliveredAt: o.deliveredAt}];
+  return rounds.every(r => !!r.deliveredAt);
+}
+
+function buildOrderCard(o, mode) {
+  const label = o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`;
+  const elapsed  = elapsedMin(o.createdAt);
+  const isAlert  = elapsed >= 15;
+  const elapsedHtml = `<span style="font-size:10px;font-weight:600;color:${isAlert?'#ea580c':'#8e8e93'}" class="elapsed-label" data-created="${o.createdAt}">${elapsed}分経過${isAlert?' ⚠️':''}</span>`;
+  const paidBadge = o.paidAt ? '<span class="pay-badge" style="background:#dcfce7;color:#166534">会計済</span>' : '';
+  const allDel    = allRoundsDelivered(o);
+  const deliveredBadge = allDel ? '<span class="pay-badge" style="background:#dbeafe;color:#1e40af">受渡済</span>' : '';
+  const payMethodBadge = o.payMethod === 'cash'
+    ? '<span class="pay-badge pay-cash">現金</span>'
+    : o.payMethod === 'paypay'
+    ? '<span class="pay-badge pay-paypay">PayPay</span>' : '';
+
+  let actionHtml = '';
+  if (mode === 'payment') {
+    const payBtn = o.paidAt
+      ? `<span style="font-size:12px;color:#16a34a;padding:8px">会計済み ✓</span>`
+      : `<button class="btn btn-success btn-sm" onclick="openPaymentModal('${o.id}')">会計する</button>`;
+    actionHtml =
+      `<div class="btn-row" style="flex-wrap:wrap;gap:6px">` +
+        `<button class="btn btn-secondary btn-sm" onclick="startAddOrder('${o.id}')">＋ 追加注文</button>` +
+        payBtn +
+        `<button class="btn btn-danger btn-sm" onclick="confirmCancelOrder('${o.id}')">取消</button>` +
+      `</div>`;
+  }
+  // waitingモードでは各ラウンドに渡したボタンをbuildRoundsHtml内で表示
+
+  const card = document.createElement('div');
+  card.className = 'order-card';
+  card.style.cssText = isAlert ? 'background:#fff7ed;border-color:#fb923c;border-width:1.5px' : '';
+  card.innerHTML =
+    `<div class="order-card-header">` +
+      `<span class="order-num">${label}${paidBadge}${deliveredBadge}${payMethodBadge}</span>` +
+      `<span>${elapsedHtml}</span>` +
+    `</div>` +
+    `<div style="margin-bottom:8px">${buildRoundsHtml(o, mode)}</div>` +
+    `<div class="order-total-txt" style="margin-bottom:${mode==='payment'?'10':'6'}px">合計 ¥${o.total.toLocaleString()}</div>` +
+    actionHtml;
+  return card;
+}
+
 function renderPaymentList() {
   const el = document.getElementById('paymentList');
-  const shopOrders = payOrders[currentShopId] || {};
-  const orders = Object.values(shopOrders).sort((a,b) => a.createdAt - b.createdAt);
+  const shopOrders = activeOrders[currentShopId] || {};
+  const orders = Object.values(shopOrders)
+    .filter(o => !o.paidAt)
+    .sort((a,b) => a.createdAt - b.createdAt);
   if (!orders.length) { el.innerHTML = '<div class="empty-state">会計待ちはありません</div>'; return; }
   el.innerHTML = '';
   orders.forEach(o => {
-    const label = o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`;
-    const card = document.createElement('div'); card.className = 'order-card';
-    card.innerHTML =
-      `<div class="order-card-header"><span class="order-num">${label}</span><span class="order-time">${o.time}</span></div>` +
-      `<div class="order-items">${o.items.map(i=>`${i.name}×${i.qty}`).join('、')}</div>` +
-      `<div class="order-total-txt">¥${o.total.toLocaleString()}</div>` +
-      `<div class="btn-row"><button class="btn btn-success" onclick="openPaymentModal('${o.id}')">会計する</button></div>`;
+    const label   = o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`;
+    const elapsed = elapsedMin(o.createdAt);
+    const isAlert = elapsed >= 15;
+    const elapsedHtml = `<span style="font-size:10px;font-weight:600;color:${isAlert?'#ea580c':'#8e8e93'}" class="elapsed-label" data-created="${o.createdAt}">${elapsed}分経過${isAlert?' ⚠️':''}</span>`;
+    const allDel  = allRoundsDelivered(o);
+    const deliveredBadge = allDel ? '<span class="pay-badge" style="background:#dbeafe;color:#1e40af;margin-left:4px">受渡済</span>' : '';
+    const roundCount = (o.rounds || [o]).length;
+    const detailId = 'pd_' + o.id;
+
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.style.cssText = isAlert ? 'background:#fff7ed;border-color:#fb923c;border-width:1.5px' : '';
+
+    // ── ヘッダー行（常時表示） ──
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px';
+    header.innerHTML =
+      `<div>` +
+        `<span class="order-num" style="font-size:20px">${label}${deliveredBadge}</span>` +
+        `<div style="margin-top:2px">${elapsedHtml}</div>` +
+      `</div>` +
+      `<div style="text-align:right">` +
+        `<div style="font-size:18px;font-weight:700;color:#1a1a2e">¥${o.total.toLocaleString()}</div>` +
+        `<div style="font-size:10px;color:#8e8e93">${roundCount}回注文</div>` +
+      `</div>`;
+    card.appendChild(header);
+
+    // ── 折りたたみ詳細エリア ──
+    const detail = document.createElement('div');
+    detail.id = detailId;
+    detail.style.display = 'none';
+    detail.style.marginBottom = '8px';
+    detail.innerHTML = buildRoundsHtml(o, 'payment');
+    card.appendChild(detail);
+
+    // ── アクションボタン行 ──
+    const actions = document.createElement('div');
+    actions.className = 'btn-row';
+    actions.style.cssText = 'flex-wrap:wrap;gap:6px';
+    actions.innerHTML =
+      `<button class="btn btn-secondary btn-sm" onclick="toggleDetail('${detailId}',this)">明細を開く</button>` +
+      `<button class="btn btn-secondary btn-sm" onclick="startAddOrder('${o.id}')">＋ 追加注文</button>` +
+      `<button class="btn btn-success btn-sm" onclick="openPaymentModal('${o.id}')">会計する</button>` +
+      `<button class="btn btn-danger btn-sm" onclick="confirmCancelOrder('${o.id}')">取消</button>`;
+    card.appendChild(actions);
+
     el.appendChild(card);
   });
 }
 
+function toggleDetail(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '明細を開く' : '明細を閉じる';
+}
+window.toggleDetail = toggleDetail;
+
 function openPaymentModal(id) {
-  const shopOrders = payOrders[currentShopId] || {};
+  const shopOrders = activeOrders[currentShopId] || {};
   const o = shopOrders[id]; if (!o) return;
   currentPayId    = id;
   currentPayTotal = o.total;
-  // 明細
-  let detail = `<div style="font-size:13px;color:#8e8e93;margin-bottom:8px">${o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`}</div>`;
-  o.items.forEach(i => { detail += `<div class="row"><span>${i.name} × ${i.qty}</span><span>¥${i.price.toLocaleString()}</span></div>`; });
+  const rounds = o.rounds || [{roundNo: 1, items: o.items, time: o.time}];
+  let detail = `<div style="font-size:13px;font-weight:600;color:#8e8e93;margin-bottom:8px">${o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`}</div>`;
+  rounds.forEach(r => {
+    detail += `<div style="font-size:11px;font-weight:600;color:#8e8e93;margin:6px 0 4px">${r.roundNo}回目 ${r.time}</div>`;
+    r.items.forEach(i => { detail += `<div class="row"><span>${i.name} × ${i.qty}</span><span>¥${i.price.toLocaleString()}</span></div>`; });
+  });
   document.getElementById('paymentDetail').innerHTML = detail;
   document.getElementById('paymentTotalDisp').textContent = '¥' + o.total.toLocaleString();
-  // ステップリセット
   document.getElementById('payStep1').style.display = 'block';
   document.getElementById('payStep2Cash').style.display = 'none';
   document.getElementById('payStep2Paypay').style.display = 'none';
@@ -941,66 +1140,182 @@ function calcChange() {
 window.calcChange = calcChange;
 
 async function completePayment(method) {
-  const shopOrders = payOrders[currentShopId] || {};
+  const shopOrders = activeOrders[currentShopId] || {};
   const o = shopOrders[currentPayId]; if (!o) return;
   // 集計更新
   const curStats = allStats[currentShopId] || {total:0, cash:0, paypay:0, count:0, byMenu:{}};
   const ns = JSON.parse(JSON.stringify(curStats));
-  ns.total   = (ns.total   || 0) + o.total;
-  ns.count   = (ns.count   || 0) + 1;
-  ns.cash    = (ns.cash    || 0) + (method === 'cash'   ? o.total : 0);
-  ns.paypay  = (ns.paypay  || 0) + (method === 'paypay' ? o.total : 0);
+  ns.total  = (ns.total  || 0) + o.total;
+  ns.count  = (ns.count  || 0) + 1;
+  ns.cash   = (ns.cash   || 0) + (method === 'cash'   ? o.total : 0);
+  ns.paypay = (ns.paypay || 0) + (method === 'paypay' ? o.total : 0);
   if (!ns.byMenu) ns.byMenu = {};
-  o.items.forEach(i => {
+  const allItems = (o.rounds || [{items: o.items}]).flatMap(r => r.items);
+  allItems.forEach(i => {
     if (!ns.byMenu[i.id]) ns.byMenu[i.id] = {name: i.name, qty: 0, total: 0};
     ns.byMenu[i.id].qty   += i.qty;
     ns.byMenu[i.id].total += i.price;
   });
   await set(ref(db, `stats/${currentShopId}`), ns);
-  // waitOrders へ移動（支払方法を付与）
-  await set(ref(db, `waitOrders/${currentShopId}/${o.id}`), {...o, payMethod: method});
-  await remove(ref(db, `payOrders/${currentShopId}/${o.id}`));
+  const paidAt = Date.now();
+  const rounds = (o.rounds || []).map(r => ({...r, deliveredAt: r.deliveredAt ?? null}));
+  const allDel = rounds.length > 0 && rounds.every(r => !!r.deliveredAt);
+  if (allDel) {
+    // 全ラウンド受け渡し済み → 両方完了なので削除
+    await remove(ref(db, `activeOrders/${currentShopId}/${o.id}`));
+  } else {
+    // 受け渡し未完了 → paidAtだけセット
+    await update(ref(db, `activeOrders/${currentShopId}/${o.id}`), {paidAt, payMethod: method});
+  }
   closeModal('paymentModal');
 }
 window.completePayment = completePayment;
 
 async function cancelOrder() {
-  const shopOrders = payOrders[currentShopId] || {};
+  const shopOrders = activeOrders[currentShopId] || {};
   const o = shopOrders[currentPayId]; if (!o) return;
   if (!confirm('この注文をキャンセルしますか？在庫数は戻ります。')) return;
+  const allItems = (o.rounds || [{items: o.items}]).flatMap(r => r.items);
   const stockUpdate = {};
-  o.items.forEach(i => { stockUpdate[i.id] = Math.max(0, (stockUsed[i.id] || 0) - i.qty); });
+  allItems.forEach(i => { stockUpdate[i.id] = Math.max(0, (stockUsed[i.id] || 0) - i.qty); });
   await update(ref(db, 'stockUsed'), stockUpdate);
-  await remove(ref(db, `payOrders/${currentShopId}/${o.id}`));
+  await remove(ref(db, `activeOrders/${currentShopId}/${o.id}`));
   closeModal('paymentModal');
 }
 window.cancelOrder = cancelOrder;
+
+async function confirmCancelOrder(id) {
+  const shopOrders = activeOrders[currentShopId] || {};
+  const o = shopOrders[id]; if (!o) return;
+  if (!confirm('この注文をキャンセルしますか？在庫数は戻ります。')) return;
+  const allItems = (o.rounds || [{items: o.items}]).flatMap(r => r.items);
+  const stockUpdate = {};
+  allItems.forEach(i => { stockUpdate[i.id] = Math.max(0, (stockUsed[i.id] || 0) - i.qty); });
+  await update(ref(db, 'stockUsed'), stockUpdate);
+  await remove(ref(db, `activeOrders/${currentShopId}/${id}`));
+}
+window.confirmCancelOrder = confirmCancelOrder;
 
 // ══════════════════════════════════════════
 //  受け渡し待ちタブ（同店舗のみ）
 // ══════════════════════════════════════════
 function renderWaitingList() {
   const el = document.getElementById('waitingList');
-  const shopOrders = waitOrders[currentShopId] || {};
-  const orders = Object.values(shopOrders).sort((a,b) => a.createdAt - b.createdAt);
+  const shopOrders = activeOrders[currentShopId] || {};
+  const orders = Object.values(shopOrders)
+    .filter(o => !allRoundsDelivered(o))
+    .sort((a,b) => a.createdAt - b.createdAt);
   if (!orders.length) { el.innerHTML = '<div class="empty-state">受け渡し待ちはありません</div>'; return; }
   el.innerHTML = '';
   orders.forEach(o => {
-    const label = o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`;
-    const payBadge = o.payMethod === 'cash'
-      ? '<span class="pay-badge pay-cash">現金</span>'
-      : '<span class="pay-badge pay-paypay">PayPay</span>';
-    const card = document.createElement('div'); card.className = 'order-card';
-    card.innerHTML =
-      `<div class="order-card-header"><span class="order-num">${label}${payBadge}</span><span class="order-time">${o.time}</span></div>` +
-      `<div class="order-items">${o.items.map(i=>`${i.name}×${i.qty}`).join('、')}</div>` +
-      `<div class="order-total-txt">¥${o.total.toLocaleString()}</div>` +
-      `<div class="btn-row"><button class="btn btn-success" onclick="completeDelivery('${o.id}')">渡した → 完了</button></div>`;
+    const label   = o.ticket != null ? `No.${o.ticket}` : `#${o.orderNo || String(o.id).slice(-4)}`;
+    const elapsed = elapsedMin(o.createdAt);
+    const isAlert = elapsed >= 15;
+    const elapsedHtml = `<span style="font-size:10px;font-weight:600;color:${isAlert?'#ea580c':'#8e8e93'}" class="elapsed-label" data-created="${o.createdAt}">${elapsed}分経過${isAlert?' ⚠️':''}</span>`;
+    const paidBadge = o.paidAt ? '<span class="pay-badge" style="background:#dcfce7;color:#166534;margin-left:4px">会計済</span>' : '';
+    const payMethodBadge = o.payMethod === 'cash'
+      ? '<span class="pay-badge pay-cash" style="margin-left:4px">現金</span>'
+      : o.payMethod === 'paypay'
+      ? '<span class="pay-badge pay-paypay" style="margin-left:4px">PayPay</span>' : '';
+
+    const rounds = (o.rounds || [{roundNo:1,items:o.items,time:o.time,deliveredAt:null}])
+      .map(r => ({...r, deliveredAt: r.deliveredAt ?? null}));
+    const pendingRounds  = rounds.filter(r => !r.deliveredAt);
+    const doneRounds     = rounds.filter(r => !!r.deliveredAt);
+    const doneId = 'wd_' + o.id;
+
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.style.cssText = isAlert ? 'background:#fff7ed;border-color:#fb923c;border-width:1.5px' : '';
+
+    // ヘッダー
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px';
+    header.innerHTML =
+      `<div>` +
+        `<span class="order-num" style="font-size:20px">${label}${paidBadge}${payMethodBadge}</span>` +
+        `<div style="margin-top:2px">${elapsedHtml}</div>` +
+      `</div>` +
+      `<div style="font-size:16px;font-weight:700;color:#1a1a2e;text-align:right">¥${o.total.toLocaleString()}</div>`;
+    card.appendChild(header);
+
+    // 未受け渡しラウンド（常時表示）
+    const pendingArea = document.createElement('div');
+    pendingArea.style.marginBottom = '6px';
+    pendingRounds.forEach((r, _) => {
+      const origIdx = rounds.indexOf(r);
+      const itemStr = r.items.map(i => `${i.name}×${i.qty}`).join('、');
+      const roundTotal = r.items.reduce((s,i) => s+i.price, 0);
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-bottom:6px;padding:8px;background:#f0fdf4;border-radius:6px;border:0.5px solid #86efac';
+      row.innerHTML =
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">` +
+          `<span style="font-size:10px;font-weight:600;color:#166534">${r.roundNo}回目 ${r.time}（未受渡）</span>` +
+          `<div style="display:flex;align-items:center;gap:6px">` +
+            `<span style="font-size:11px;color:#8e8e93">¥${roundTotal.toLocaleString()}</span>` +
+            `<button class="btn btn-success btn-sm" style="padding:4px 10px;font-size:10px" onclick="completeDelivery('${o.id}',${origIdx})">渡した</button>` +
+          `</div>` +
+        `</div>` +
+        `<div style="font-size:12px;color:#1a1a2e">${itemStr}</div>`;
+      pendingArea.appendChild(row);
+    });
+    card.appendChild(pendingArea);
+
+    // 受渡済みラウンド（折りたたみ）
+    if (doneRounds.length > 0) {
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'btn btn-secondary btn-sm';
+      toggleBtn.style.cssText = 'width:100%;margin-bottom:6px;font-size:11px';
+      toggleBtn.textContent = `受渡済み ${doneRounds.length}件を表示`;
+      toggleBtn.onclick = function() {
+        const area = document.getElementById(doneId);
+        const open = area.style.display !== 'none';
+        area.style.display = open ? 'none' : 'block';
+        this.textContent = open ? `受渡済み ${doneRounds.length}件を表示` : `受渡済み ${doneRounds.length}件を非表示`;
+      };
+      card.appendChild(toggleBtn);
+
+      const doneArea = document.createElement('div');
+      doneArea.id = doneId;
+      doneArea.style.display = 'none';
+      doneRounds.forEach(r => {
+        const itemStr = r.items.map(i => `${i.name}×${i.qty}`).join('、');
+        const roundTotal = r.items.reduce((s,i) => s+i.price, 0);
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-bottom:6px;padding:8px;background:#f2f2f7;border-radius:6px;border:0.5px solid #d1d1d6;opacity:0.7';
+        row.innerHTML =
+          `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">` +
+            `<span style="font-size:10px;font-weight:600;color:#8e8e93">${r.roundNo}回目 ${r.time}</span>` +
+            `<div style="display:flex;align-items:center;gap:6px">` +
+              `<span style="font-size:11px;color:#8e8e93">¥${roundTotal.toLocaleString()}</span>` +
+              `<span style="font-size:10px;color:#16a34a;font-weight:600">受渡済 ✓</span>` +
+            `</div>` +
+          `</div>` +
+          `<div style="font-size:12px;color:#8e8e93">${itemStr}</div>`;
+        doneArea.appendChild(row);
+      });
+      card.appendChild(doneArea);
+    }
+
     el.appendChild(card);
   });
 }
-async function completeDelivery(id) {
-  await remove(ref(db, `waitOrders/${currentShopId}/${id}`));
+
+async function completeDelivery(id, roundIdx) {
+  const shopOrders = activeOrders[currentShopId] || {};
+  const o = shopOrders[id]; if (!o) return;
+  const deliveredAt = Date.now();
+  // ラウンドのdeliveredAtをセット
+  const rounds = (o.rounds || [{roundNo:1, items:o.items, time:o.time, deliveredAt:null}])
+    .map(r => ({...r, deliveredAt: r.deliveredAt ?? null}));
+  rounds[roundIdx].deliveredAt = deliveredAt;
+  const allDone = rounds.every(r => !!r.deliveredAt);
+  if (allDone && o.paidAt) {
+    // 全ラウンド受け渡し済み＋会計済み → 削除
+    await remove(ref(db, `activeOrders/${currentShopId}/${id}`));
+  } else {
+    await update(ref(db, `activeOrders/${currentShopId}/${id}`), {rounds});
+  }
 }
 window.completeDelivery = completeDelivery;
 
@@ -1008,8 +1323,9 @@ window.completeDelivery = completeDelivery;
 //  バッジ更新
 // ══════════════════════════════════════════
 function updateBadges() {
-  const pc = Object.keys(payOrders[currentShopId] || {}).length;
-  const wc = Object.keys(waitOrders[currentShopId] || {}).length;
+  const shopOrders = Object.values(activeOrders[currentShopId] || {});
+  const pc = shopOrders.filter(o => !o.paidAt).length;
+  const wc = shopOrders.filter(o => !allRoundsDelivered(o)).length;
   const pb = document.getElementById('payBadge');
   const wb = document.getElementById('waitBadge');
   pb.style.display = pc ? 'flex' : 'none'; pb.textContent = pc;
@@ -1099,8 +1415,7 @@ function renderStats() {
 
 async function resetAllStats() {
   if (!confirm('全店舗の注文・集計・在庫使用数をリセットしますか？\nメニュー・店舗設定は保持されます。\nこの操作は取り消せません。')) return;
-  await set(ref(db, 'payOrders'),    {});
-  await set(ref(db, 'waitOrders'),   {});
+  await set(ref(db, 'activeOrders'), {});
   await set(ref(db, 'stats'),        {});
   await set(ref(db, 'stockUsed'),    {});
   await set(ref(db, 'shopCounters'), {});
@@ -1147,8 +1462,7 @@ window.showShopResetModal = showShopResetModal;
 
 async function resetShopStats(shopId, shopName) {
   if (!confirm('「' + shopName + '」の注文・集計・在庫使用数をリセットしますか？\nこの操作は取り消せません。')) return;
-  await remove(ref(db, 'payOrders/'      + shopId));
-  await remove(ref(db, 'waitOrders/'     + shopId));
+  await remove(ref(db, 'activeOrders/'   + shopId));
   await remove(ref(db, 'stats/'          + shopId));
   await remove(ref(db, 'shopCounters/'   + shopId));
   // 在庫使用数は全体で管理のため全リセット（店舗別在庫はなし）
@@ -1514,6 +1828,26 @@ window.deleteMenu = deleteMenu;
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 window.closeModal = closeModal;
+
+// ══════════════════════════════════════════
+//  経過時間タイマー（1分ごとに表示更新）
+// ══════════════════════════════════════════
+setInterval(() => {
+  document.querySelectorAll('.elapsed-label').forEach(el => {
+    const created = parseInt(el.dataset.created);
+    if (!created) return;
+    const min = Math.floor((Date.now() - created) / 60000);
+    const isAlert = min >= 15;
+    el.textContent = min + '分経過' + (isAlert ? ' ⚠️' : '');
+    el.style.color = isAlert ? '#ea580c' : '#8e8e93';
+    // カード背景も更新
+    const card = el.closest('.order-card');
+    if (card) {
+      card.style.background = isAlert ? '#fff7ed' : '';
+      card.style.borderColor = isAlert ? '#fb923c' : '';
+    }
+  });
+}, 60000);
 
 // ══════════════════════════════════════════
 //  起動
